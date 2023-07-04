@@ -50,15 +50,6 @@ def main():
 
 
 if __name__ == "__main__":
-#     # 通过cli.py调用cli_demo时需要在cli.py里初始化模型，否则会报错：
-    # aifin: error: unrecognized arguments: start cli
-    # 为此需要先将
-    # args = None
-    # args = parser.parse_args()
-    # args_dict = vars(args)
-    # shared.loaderCheckPoint = LoaderCheckPoint(args_dict)
-    # 语句从main函数里取出放到函数外部
-    # 然后在cli.py里初始化
     args = None
     args = parser.parse_args()
     args_dict = vars(args)

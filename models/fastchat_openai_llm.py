@@ -24,6 +24,7 @@ def _build_message_template() -> Dict[str, str]:
 
 class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
     api_base_url: str = "http://localhost:8000/v1"
+    api_key: str = "EMPTY"
     model_name: str = "chatglm-6b"
     max_token: int = 10000
     temperature: float = 0.01
@@ -53,14 +54,14 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
 
     @property
     def _api_key(self) -> str:
-        pass
+        return self.api_key
 
     @property
     def _api_base_url(self) -> str:
         return self.api_base_url
 
     def set_api_key(self, api_key: str):
-        pass
+        self.api_key = api_key
 
     def set_api_base_url(self, api_base_url: str):
         self.api_base_url = api_base_url
@@ -73,7 +74,7 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
         try:
             import openai
             # Not support yet
-            openai.api_key = "EMPTY"
+            openai.api_key = self.api_key
             openai.api_base = self.api_base_url
         except ImportError:
             raise ValueError(
@@ -116,7 +117,7 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
         try:
             import openai
             # Not support yet
-            openai.api_key = "EMPTY"
+            openai.api_key = self.api_key
             openai.api_base = self.api_base_url
         except ImportError:
             raise ValueError(
