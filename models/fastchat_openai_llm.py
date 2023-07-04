@@ -24,7 +24,7 @@ def _build_message_template() -> Dict[str, str]:
 
 class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
     api_base_url: str = "http://localhost:8000/v1"
-    api_key: str = "EMPTY"
+    api_key: str = None
     model_name: str = "chatglm-6b"
     max_token: int = 10000
     temperature: float = 0.01
@@ -74,14 +74,19 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
         try:
             import openai
             # Not support yet
-            openai.api_key = self.api_key
-            openai.api_base = self.api_base_url
+            if self.api_key:
+                openai.api_key = self.api_key
+            else:
+                openai.api_key = "EMPTY"
+            if len(self.api_base_url) != 0:
+                openai.api_base = self.api_base_url
         except ImportError:
             raise ValueError(
                 "Could not import openai python package. "
                 "Please install it with `pip install openai`."
             )
         # create a chat completion
+        print(self.model_name, self.api_key, self.api_base_url)
         completion = openai.ChatCompletion.create(
             model=self.model_name,
             messages=self.build_message_list(prompt)
@@ -117,8 +122,12 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
         try:
             import openai
             # Not support yet
-            openai.api_key = self.api_key
-            openai.api_base = self.api_base_url
+            if self.api_key:
+                openai.api_key = self.api_key
+            else:
+                openai.api_key = "EMPTY"
+            if len(self.api_base_url) != 0:
+                openai.api_base = self.api_base_url
         except ImportError:
             raise ValueError(
                 "Could not import openai python package. "

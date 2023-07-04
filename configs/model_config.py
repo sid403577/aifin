@@ -16,7 +16,7 @@ embedding_model_dict = {
     "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
     "ernie-base": "nghuyong/ernie-3.0-base-zh",
     "text2vec-base": "shibing624/text2vec-base-chinese",
-    "text2vec": "GanymedeNil/text2vec-large-chinese",
+    "text2vec": "huggingface/GanymedeNil/text2vec-large-chinese",
     "m3e-small": "moka-ai/m3e-small",
     "m3e-base": "moka-ai/m3e-base",
 }
@@ -55,13 +55,13 @@ llm_model_dict = {
     "chatglm-6b": {
         "name": "chatglm-6b",
         "pretrained_model_name": "THUDM/chatglm-6b",
-        "local_model_path": None,
+        "local_model_path": "huggingface/THUDM/chatglm2-6b",
         "provides": "ChatGLM"
     },
     "chatglm2-6b": {
         "name": "chatglm2-6b",
         "pretrained_model_name": "THUDM/chatglm2-6b",
-        "local_model_path": None,
+        "local_model_path": "huggingface/THUDM/chatglm2-6b",
         "provides": "ChatGLM"
     },
 
@@ -83,7 +83,14 @@ llm_model_dict = {
         "local_model_path": None,
         "provides": "LLamaLLM"
     },
-
+    "ChatGPT-3.5": {
+        "name": "gpt-3.5-turbo",  # "name"修改为fastchat服务中的"model_name"
+        "pretrained_model_name": "gpt-3.5-turbo",
+        "local_model_path": None,
+        "provides": "FastChatOpenAILLM",  # 使用fastchat api时，需保证"provides"为"FastChatOpenAILLM"
+        "api_key": None,
+        "api_base_url": "http://62.234.53.45:8000/v1"  # "name"修改为fastchat服务中的"api_base_url"
+    },
     # 通过 fastchat 调用的模型请参考如下格式
     "fastchat-chatglm-6b": {
         "name": "chatglm-6b",  # "name"修改为fastchat服务中的"model_name"
@@ -97,7 +104,7 @@ llm_model_dict = {
         "pretrained_model_name": "chatglm2-6b",
         "local_model_path": None,
         "provides": "FastChatOpenAILLM",  # 使用fastchat api时，需保证"provides"为"FastChatOpenAILLM"
-        "api_base_url": "http://localhost:8000/v1"  # "name"修改为fastchat服务中的"api_base_url"
+        "api_base_url": "http://62.234.53.45:8000/v1"  # "name"修改为fastchat服务中的"api_base_url"
     },
 
     # 通过 fastchat 调用的模型请参考如下格式
@@ -111,7 +118,7 @@ llm_model_dict = {
 }
 
 # LLM 名称
-LLM_MODEL = "chatglm-6b"
+LLM_MODEL = "fastchat-chatglm2-6b"
 # 量化加载8bit 模型
 LOAD_IN_8BIT = False
 # Load the model with bfloat16 precision. Requires NVIDIA Ampere GPU.
