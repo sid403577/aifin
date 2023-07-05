@@ -1,0 +1,24 @@
+filepath=./README.md,len=23
+page_content='安装' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='环境检查' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='```shell' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='首先，确信你的机器安装了 Python 3.8 及以上版本' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='$ python --version\nPython 3.8.13' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='如果低于这个版本，可使用conda安装环境' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='$ conda create -p /your_path/env_name python=3.8' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='激活环境' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='$ source activate /your_path/env_name\n$ pip3 install --upgrade pip' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'NarrativeText'}
+page_content='关闭环境' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='$ source deactivate /your_path/env_name' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='删除环境' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='$ conda env remove -p  /your_path/env_name\n```' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'NarrativeText'}
+page_content='项目依赖' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='```shell' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='拉取仓库' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='$ git clone https://github.com/sid403577/aifin.git' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='进入目录' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='$ cd aifin' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='安装依赖' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='$ pip install -r requirements.txt' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='根据需求运行 api.py, cli_demo.py 或 webui.py。' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'Title'}
+page_content='```' metadata={'source': './README.md', 'filename': 'README.md', 'file_directory': '.', 'filetype': 'text/markdown', 'page_number': 1, 'category': 'UncategorizedText'}
