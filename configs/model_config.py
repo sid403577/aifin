@@ -26,6 +26,7 @@ EMBEDDING_MODEL = "text2vec"
 
 # Embedding running device
 EMBEDDING_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+#EMBEDDING_DEVICE = "cpu"
 
 
 # supported LLM models
