@@ -49,7 +49,18 @@ def get_answer(query, vs_path, history, mode, score_threshold=VECTOR_SEARCH_SCOR
             history[-1][-1] += source
             yield history, ""
     elif mode == "Google搜索问答":
-        yield history, ""
+        for resp, history in local_doc_qa.get_search_result_google_answer(
+                query=query, chat_history=history, streaming=streaming):
+            source = "\n\n"
+            source += "".join(
+                [
+                    f"""<details> <summary>出处 [{i + 1}] <a href="{doc.metadata["source"]}" target="_blank">{doc.metadata["source"]}</a> </summary>\n"""
+                    f"""{doc.page_content}\n"""
+                    f"""</details>"""
+                    for i, doc in
+                    enumerate(resp["source_documents"])])
+            history[-1][-1] += source
+            yield history, ""
     elif mode == "搜索+知识库+LLM问答":
         yield history, ""
     elif mode == "知识库问答" and vs_path is not None and os.path.exists(vs_path) and "index.faiss" in os.listdir(

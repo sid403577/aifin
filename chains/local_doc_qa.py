@@ -14,7 +14,7 @@ from models.base import (BaseAnswer,
 from models.loader.args import parser
 from models.loader import LoaderCheckPoint
 import models.shared as shared
-from agent import google_search
+from agent import google_search, bing_search
 from langchain.docstore.document import Document
 from functools import lru_cache
 from textsplitter.zh_title_enhance import zh_title_enhance
@@ -271,6 +271,21 @@ class LocalDocQA:
         return response, prompt
 
     def get_search_result_based_answer(self, query, chat_history=[], streaming: bool = STREAMING):
+        results = bing_search(query)
+        result_docs = search_result2docs(results)
+        prompt = generate_prompt(result_docs, query)
+
+        for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
+                                                      streaming=streaming):
+            resp = answer_result.llm_output["answer"]
+            history = answer_result.history
+            history[-1][0] = query
+            response = {"query": query,
+                        "result": resp,
+                        "source_documents": result_docs}
+            yield response, history
+
+    def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
         results = google_search(query)
         result_docs = search_result2docs(results)
         prompt = generate_prompt(result_docs, query)
