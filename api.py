@@ -5,6 +5,7 @@ import shutil
 from typing import List, Optional
 import urllib
 import asyncio
+import itertools
 import nltk
 import pydantic
 import uvicorn
@@ -55,6 +56,25 @@ class ChatMessage(BaseModel):
     question: str = pydantic.Field(..., description="Question text")
     response: str = pydantic.Field(..., description="Response text")
     history: List[List[str]] = pydantic.Field(..., description="History text")
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "question": "工伤保险如何办理？",
+                "response": "根据已知信息，可以总结如下：\n\n1. 参保单位为员工缴纳工伤保险费，以保障员工在发生工伤时能够获得相应的待遇。\n2. 不同地区的工伤保险缴费规定可能有所不同，需要向当地社保部门咨询以了解具体的缴费标准和规定。\n3. 工伤从业人员及其近亲属需要申请工伤认定，确认享受的待遇资格，并按时缴纳工伤保险费。\n4. 工伤保险待遇包括工伤医疗、康复、辅助器具配置费用、伤残待遇、工亡待遇、一次性工亡补助金等。\n5. 工伤保险待遇领取资格认证包括长期待遇领取人员认证和一次性待遇领取人员认证。\n6. 工伤保险基金支付的待遇项目包括工伤医疗待遇、康复待遇、辅助器具配置费用、一次性工亡补助金、丧葬补助金等。",
+                "history": [
+                    [
+                        "工伤保险是什么？",
+                        "工伤保险是指用人单位按照国家规定，为本单位的职工和用人单位的其他人员，缴纳工伤保险费，由保险机构按照国家规定的标准，给予工伤保险待遇的社会保险制度。",
+                    ]
+                ],
+            }
+        }
+
+class ChatMessageDocument(BaseModel):
+    question: str = pydantic.Field(..., description="Question text")
+    response: str = pydantic.Field(..., description="Response text")
+    history: List[List[str]] = pydantic.Field(..., description="History text")
     source_documents: List[str] = pydantic.Field(
         ..., description="List of source documents and their scores"
     )
@@ -77,7 +97,11 @@ class ChatMessage(BaseModel):
                 ],
             }
         }
-
+class ChatMessageEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ChatMessage):
+            return obj.__dict__  # Convert ChatMessage object to a dictionary
+        return super().default(obj)
 
 def get_folder_path(local_doc_id: str):
     return os.path.join(KB_ROOT_PATH, local_doc_id, "content")
@@ -297,7 +321,7 @@ async def local_doc_chat(
             for inum, doc in enumerate(resp["source_documents"])
         ]
 
-        return ChatMessage(
+        return ChatMessageDocument(
             question=question,
             response=resp["result"],
             history=history,
@@ -327,7 +351,7 @@ async def bing_search_chat(
         for inum, doc in enumerate(resp["source_documents"])
     ]
 
-    return ChatMessage(
+    return ChatMessageDocument(
         question=question,
         response=resp["result"],
         history=history,
@@ -335,7 +359,7 @@ async def bing_search_chat(
     )
 
 
-async def chat(
+def chat(
         question: str = Body(..., description="Question", example="工伤保险是什么？"),
         history: List[List[str]] = Body(
             [],
@@ -354,13 +378,42 @@ async def chat(
         history = answer_result.history
         pass
 
-    return ChatMessage(
+    return ChatMessageDocument(
         question=question,
         response=resp,
         history=history,
         source_documents=[],
     )
 
+
+
+
+async def chat_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    turn = 1
+    while True:
+        input_json = await websocket.receive_text()
+        json_data = json.loads(input_json)
+        question, history = json_data["question"], json_data["history"]
+        await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
+        for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
+            resp = answer_result.llm_output["answer"]
+            history = answer_result.history
+            await websocket.send_text(resp)
+
+            chat_message = ChatMessage(
+                question=question,
+                response=resp,
+                history=history
+            )
+        await websocket.send_text(
+            json.dumps(
+                chat_message,
+                cls=ChatMessageEncoder,
+                ensure_ascii=False,
+            )
+        )
+        turn += 1
 
 async def stream_chat(websocket: WebSocket, knowledge_base_id: str):
     await websocket.accept()
@@ -430,6 +483,7 @@ def api_start(host, port):
             allow_headers=["*"],
         )
     app.websocket("/local_doc_qa/stream-chat/{knowledge_base_id}")(stream_chat)
+    app.websocket("/chat_endpoint")(chat_endpoint)
 
     app.get("/", response_model=BaseResponse)(document)
 
@@ -437,8 +491,8 @@ def api_start(host, port):
 
     app.post("/local_doc_qa/upload_file", response_model=BaseResponse)(upload_file)
     app.post("/local_doc_qa/upload_files", response_model=BaseResponse)(upload_files)
-    app.post("/local_doc_qa/local_doc_chat", response_model=ChatMessage)(local_doc_chat)
-    app.post("/local_doc_qa/bing_search_chat", response_model=ChatMessage)(bing_search_chat)
+    app.post("/local_doc_qa/local_doc_chat", response_model=ChatMessageDocument)(local_doc_chat)
+    app.post("/local_doc_qa/bing_search_chat", response_model=ChatMessageDocument)(bing_search_chat)
     app.get("/local_doc_qa/list_knowledge_base", response_model=ListDocsResponse)(list_kbs)
     app.get("/local_doc_qa/list_files", response_model=ListDocsResponse)(list_docs)
     app.delete("/local_doc_qa/delete_knowledge_base", response_model=BaseResponse)(delete_kb)
