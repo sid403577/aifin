@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 my_api_key = "AIzaSyAQwvxsjirV3fXxQ_oCClvg5wct0Vyzq8A"
 my_cse_id = "a641dd528fa274bc3"
 
+
+
 htmlcontent = {
     "www.prnasia.com":{
         "element":"div",
@@ -17,7 +19,6 @@ htmlcontent = {
     "finance.stockstar.com":{
         "element":"div",
         "attr":{'class': 'article_content'},
-        #"encoding":"GBK",
         "testCaseList":['https://finance.stockstar.com/IG2022032400001037.shtml']
     },
 }
@@ -52,13 +53,12 @@ def get_text(link:str,displayLink:str):
     try:
         if displayLink in htmlcontent:
             params = htmlcontent[displayLink]
-            encoding = None if 'encodings' not in params['encoding'] else params['encoding']
-            soup = BeautifulSoup(download_page(url=link,encoding=encoding))
+            soup = BeautifulSoup(download_page(url=link))
             return soup.find_all(params['element'], params['attr'])[0].get_text()
     except Exception as e:
         print(f"error:获取内容异常，link：{link}"+e)
     return None
-def download_page(url,encoding=None, para=None,):
+def download_page(url, para=None):
     normalUrl = "https://api.crawlbase.com/?token=gRg5wZGhA4tZby6Ihq_6IQ&url="
     crawUrl = f"{normalUrl}{urllib.parse.quote(url)}"
     if para:
@@ -67,9 +67,16 @@ def download_page(url,encoding=None, para=None,):
         response = requests.get(crawUrl)
     # response.encoding = response.apparent_encoding
     if response.status_code == 200:
-        if encoding:
-            response.encoding = encoding
-        return response.text
+        code = response.encoding
+        text = response.text
+        try:
+            text = text.encode(code).decode('utf-8')
+        except:
+            try:
+                text = text.encode(code).decode('gbk')
+            except:
+                text = text
+        return text
     else:
         print("failed to download the page")
 
