@@ -358,6 +358,35 @@ async def bing_search_chat(
         source_documents=source_documents,
     )
 
+async def google_search_chat(
+        question: str = Body(..., description="Question", example="工伤保险是什么？"),
+        history: Optional[List[List[str]]] = Body(
+            [],
+            description="History of previous questions and answers",
+            example=[
+                [
+                    "工伤保险是什么？",
+                    "工伤保险是指用人单位按照国家规定，为本单位的职工和用人单位的其他人员，缴纳工伤保险费，由保险机构按照国家规定的标准，给予工伤保险待遇的社会保险制度。",
+                ]
+            ],
+        ),
+):
+    for resp, history in local_doc_qa.get_search_result_google_answer(
+            query=question, chat_history=history, streaming=True
+    ):
+        pass
+    source_documents = [
+        f"""出处 [{inum + 1}] [{doc.metadata["source"]}]({doc.metadata["source"]}) \n\n{doc.page_content}\n\n"""
+        for inum, doc in enumerate(resp["source_documents"])
+    ]
+
+    return ChatMessageDocument(
+        question=question,
+        response=resp["result"],
+        history=history,
+        source_documents=source_documents,
+    )
+
 
 def chat(
         question: str = Body(..., description="Question", example="工伤保险是什么？"),
@@ -388,7 +417,7 @@ def chat(
 
 
 
-async def chat_endpoint(websocket: WebSocket):
+async def chat_llm(websocket: WebSocket):
     await websocket.accept()
     turn = 1
     while True:
@@ -483,7 +512,7 @@ def api_start(host, port):
             allow_headers=["*"],
         )
     app.websocket("/local_doc_qa/stream-chat/{knowledge_base_id}")(stream_chat)
-    app.websocket("/chat_endpoint")(chat_endpoint)
+    app.websocket("/chat_llm")(chat_llm)
 
     app.get("/", response_model=BaseResponse)(document)
 
@@ -493,6 +522,7 @@ def api_start(host, port):
     app.post("/local_doc_qa/upload_files", response_model=BaseResponse)(upload_files)
     app.post("/local_doc_qa/local_doc_chat", response_model=ChatMessageDocument)(local_doc_chat)
     app.post("/local_doc_qa/bing_search_chat", response_model=ChatMessageDocument)(bing_search_chat)
+    app.post("/local_doc_qa/google_search_chat", response_model=ChatMessageDocument)(google_search_chat)
     app.get("/local_doc_qa/list_knowledge_base", response_model=ListDocsResponse)(list_kbs)
     app.get("/local_doc_qa/list_files", response_model=ListDocsResponse)(list_docs)
     app.delete("/local_doc_qa/delete_knowledge_base", response_model=BaseResponse)(delete_kb)
