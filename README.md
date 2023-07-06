@@ -34,4 +34,8 @@ $ cd aifin
 $ pip install -r requirements.txt
 
 # 根据需求运行 `api.py`, `cli_demo.py` 或 `webui.py`。
+python webui.py
+
+# 流式界面
+streamlit run webui_st.py
 ```
