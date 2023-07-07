@@ -431,7 +431,19 @@ async def chat_llm(websocket: WebSocket):
                         )
                         for inum, doc in enumerate(result["source_documents"])
                     ]
-                    await websocket.send_text(source_documents)
+                    chat_message = ChatMessage(
+                        question=question,
+                        response="",
+                        history=history,
+                        source_documents=source_documents,
+                    )
+                    await websocket.send_text(
+                        json.dumps(
+                            chat_message,
+                            cls=ChatMessageEncoder,
+                            ensure_ascii=False,
+                        )
+                    )
                 else:
                     resp = result["result"]
                     history = history
@@ -484,7 +496,19 @@ async def chat_llm(websocket: WebSocket):
                         )
                         for inum, doc in enumerate(result["source_documents"])
                     ]
-                    await websocket.send_text(source_documents)
+                    chat_message = ChatMessage(
+                        question=question,
+                        response="",
+                        history=history,
+                        source_documents=source_documents,
+                    )
+                    await websocket.send_text(
+                        json.dumps(
+                            chat_message,
+                            cls=ChatMessageEncoder,
+                            ensure_ascii=False,
+                        )
+                    )
                 else:
                     resp = result["result"]
                     history = history
