@@ -406,7 +406,7 @@ async def chat_llm(websocket: WebSocket):
         input_json = await websocket.receive_text()
         json_data = json.loads(input_json)
         question, history ,type = json_data["question"], json_data["history"] ,json_data["type"]
-        await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
+        #await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
         if type == 1:
             for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
                 resp = answer_result.llm_output["answer"]
@@ -418,7 +418,7 @@ async def chat_llm(websocket: WebSocket):
             for result, history in local_doc_qa.get_search_result_google_answer(query=question, chat_history=history, streaming=True):
                 resp = result["result"]
                 history = history
-                await websocket.send_text(resp)
+                #await websocket.send_text(resp)
             source_documents = [
                 json.dumps(
                     {
@@ -438,6 +438,42 @@ async def chat_llm(websocket: WebSocket):
                 resp = result["result"]
                 history = history
                 await websocket.send_text(resp)
+            source_documents = [
+                json.dumps(
+                    {
+                        "num": inum + 1,
+                        "title": doc.metadata["filename"],
+                        "url": doc.metadata["source"],
+                        "content": doc.page_content,
+                        "date": doc.metadata["source"]
+                    }
+                )
+                for inum, doc in enumerate(result["source_documents"])
+            ]
+
+        if type == 4:
+            for result, history in local_doc_qa.get_search_result_google_answer(query=question, chat_history=history,
+                                                                                streaming=True):
+                if result["flag"] == 1:
+                    resp = result["result"]
+                    source_documents = [
+                        json.dumps(
+                            {
+                                "num": inum + 1,
+                                "title": doc.metadata["filename"],
+                                "url": doc.metadata["source"],
+                                "content": doc.page_content,
+                                "date": doc.metadata["source"]
+                            }
+                        )
+                        for inum, doc in enumerate(result["source_documents"])
+                    ]
+                    await websocket.send_text(source_documents)
+                else:
+                    resp = result["result"]
+                    history = history
+                    #await websocket.send_text(resp)
+
             source_documents = [
                 json.dumps(
                     {
