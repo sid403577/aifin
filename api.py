@@ -413,6 +413,7 @@ async def chat_llm(websocket: WebSocket):
                 history = answer_result.history
                 await websocket.send_text(resp)
             source_documents = []
+
         if type ==2:
             for resp, history in local_doc_qa.get_search_result_google_answer(query=question, chat_history=history, streaming=True):
                 resp = resp["result"]
@@ -423,6 +424,16 @@ async def chat_llm(websocket: WebSocket):
                 for inum, doc in enumerate(resp["source_documents"])
             ]
 
+        if type == 3:
+            for resp, history in local_doc_qa.get_search_result_google_answer(query=question, chat_history=history,
+                                                                              streaming=True):
+                resp = resp["result"]
+                history = history
+                await websocket.send_text(resp)
+            source_documents = [
+                f"""出处 [{inum + 1}] [{doc.metadata["source"]}]({doc.metadata["source"]}) \n\n{doc.page_content}\n\n"""
+                for inum, doc in enumerate(resp["source_documents"])
+            ]
         chat_message = ChatMessage(
             question=question,
             response=resp,
