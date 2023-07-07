@@ -439,7 +439,15 @@ async def chat_llm(websocket: WebSocket):
                 history = history
                 await websocket.send_text(resp)
             source_documents = [
-                f"""{"num":{inum + 1},"title":"{doc.metadata["source"]}","url":{doc.metadata["source"]},"content":{doc.page_content},"date":{doc.metadata["source"]}}"""
+                json.dumps(
+                    {
+                        "num": inum + 1,
+                        "title": doc.metadata["filename"],
+                        "url": doc.metadata["source"],
+                        "content": doc.page_content,
+                        "date": doc.metadata["source"]
+                    }
+                )
                 for inum, doc in enumerate(result["source_documents"])
             ]
         chat_message = ChatMessage(
