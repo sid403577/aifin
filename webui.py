@@ -1,7 +1,7 @@
 import gradio as gr
 import shutil
 
-from chains.local_doc_qa import LocalDocQA
+from chains.local_doc_qa import LocalDocQA, has_vector_store
 from configs.model_config import *
 import nltk
 import models.shared as shared
@@ -61,7 +61,7 @@ def get_answer(query, vs_path, history, mode, score_threshold=VECTOR_SEARCH_SCOR
                     enumerate(resp["source_documents"])])
             history[-1][-1] += source
             yield history, ""
-    elif mode == "搜索+知识库+LLM问答":
+    elif mode == "搜索+知识库问答":
         for resp, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
                 query=query, vs_path=vs_path, chat_history=history, streaming=streaming,knowledge_ratio=knowledge_ratio):
             source = "\n\n"
@@ -73,8 +73,7 @@ def get_answer(query, vs_path, history, mode, score_threshold=VECTOR_SEARCH_SCOR
                  enumerate(resp["source_documents"])])
             history[-1][-1] += source
             yield history, ""
-    elif mode == "知识库问答" and vs_path is not None and os.path.exists(vs_path) and "index.faiss" in os.listdir(
-            vs_path):
+    elif mode == "知识库问答" and has_vector_store(vs_path):
         for resp, history in local_doc_qa.get_knowledge_based_answer(
                 query=query, vs_path=vs_path, chat_history=history, streaming=streaming):
             source = "\n\n"
@@ -194,7 +193,7 @@ def change_vs_name_input(vs_id, history):
                 gr.update(choices=[]), gr.update(visible=False)
     else:
         vs_path = os.path.join(KB_ROOT_PATH, vs_id, "vector_store")
-        if "index.faiss" in os.listdir(vs_path):
+        if has_vector_store(vs_path):
             file_status = f"已加载知识库{vs_id}，请开始提问"
             return gr.update(visible=False), gr.update(visible=False), gr.update(visible=True), \
                    vs_path, history + [[None, file_status]], \
@@ -221,7 +220,7 @@ knowledge_base_test_mode_info = ("【注意】\n\n"
 def change_mode(mode, history):
     if mode == "知识库问答":
         return gr.update(visible=True), gr.update(visible=False), history
-    elif mode == "搜索+知识库+LLM问答":
+    elif mode == "搜索+知识库问答":
         return gr.update(visible=True), gr.update(visible=False), history
         # + [[None, "【注意】：您已进入知识库问答模式，您输入的任何查询都将进行知识库查询，然后会自动整理知识库关联内容进入模型查询！！！"]]
     elif mode == "知识库测试":
@@ -367,7 +366,7 @@ with gr.Blocks(css=block_css, theme=gr.themes.Default(**default_theme_args)) as 
                 query = gr.Textbox(show_label=False,
                                    placeholder="请输入提问内容，按回车进行提交").style(container=False)
             with gr.Column(scale=5):
-                mode = gr.Radio(["LLM 对话", "知识库问答", "Bing搜索问答", "Google搜索问答", "搜索+知识库+LLM问答"],
+                mode = gr.Radio(["LLM 对话", "知识库问答", "Bing搜索问答", "Google搜索问答", "搜索+知识库问答"],
                                 label="请选择使用模式",
                                 value="知识库问答", )
                 knowledge_set = gr.Accordion("知识库设定", visible=False)

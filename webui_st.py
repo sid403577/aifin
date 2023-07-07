@@ -51,7 +51,7 @@ def get_answer(query, vs_path, history, mode, score_threshold=VECTOR_SEARCH_SCOR
             yield history, ""
     elif mode == "Google搜索问答":
         yield history, ""
-    elif mode == "搜索+知识库+LLM问答":
+    elif mode == "搜索+知识库问答":
         yield history, ""
     elif mode == "知识库问答" and vs_path is not None and os.path.exists(vs_path):
         for resp, history in local_doc_qa.get_knowledge_based_answer(
@@ -402,7 +402,7 @@ def use_kb_mode(m):
 
 
 # sidebar
-modes = ['LLM 对话', '知识库问答', 'Bing搜索问答', '知识库测试', 'Google搜索问答', '搜索+知识库+LLM问答']
+modes = ['LLM 对话', '知识库问答', 'Bing搜索问答', '知识库测试', 'Google搜索问答', '搜索+知识库问答']
 with st.sidebar:
     def on_mode_change():
         m = st.session_state.mode
@@ -441,7 +441,7 @@ with st.sidebar:
             if btn_load_model:
                 local_doc_qa = load_model(llm_model, embedding_model)
 
-    if mode in ['知识库问答', '知识库测试', '搜索+知识库+LLM问答']:
+    if mode in ['知识库问答', '知识库测试', '搜索+知识库问答']:
         vs_list = get_vs_list()
         vs_list.remove('新建知识库')
 

@@ -1,5 +1,7 @@
+from os import path
+
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
-from vectorstores import MyFAISS
+from vectorstores import MyFAISS, MyMilvus
 from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
 from configs.model_config import *
 import datetime
@@ -27,11 +29,43 @@ def _embeddings_hash(self):
 
 HuggingFaceEmbeddings.__hash__ = _embeddings_hash
 
+def has_vector_store(vs_path) -> bool:
+    if MILVUS_HOST:
+        directories = vs_path.split("/")
+        if len(directories) > 1:
+            vs_path = directories[-2]
+        return MyMilvus.has_collection(vs_path)
+    return vs_path is not None and os.path.exists(vs_path) and "index.faiss" in os.listdir(vs_path)
 
 # will keep CACHED_VS_NUM of vector store caches
 @lru_cache(CACHED_VS_NUM)
 def load_vector_store(vs_path, embeddings):
+    if MILVUS_HOST:
+        directories = vs_path.split("/")
+        if len(directories) > 1:
+            vs_path = directories[-2]
+        return MyMilvus(embeddings, vs_path)
     return MyFAISS.load_local(vs_path, embeddings)
+
+
+def add_vector_store(vs_path, embeddings, docs) -> List[str]:
+    if MILVUS_HOST:
+        directories = vs_path.split("/")
+        if len(directories) > 1:
+            vs_path = directories[-2]
+        vector_store = MyMilvus(embeddings, vs_path)
+        vector_store.add_documents(docs)
+        torch_gc()
+        vector_store.save()
+        return vector_store
+    if has_vector_store(vs_path):
+        vector_store = MyFAISS.load_local(vs_path, embeddings)
+        vector_store.add_documents(docs)
+    else:
+        vector_store = MyFAISS.from_documents(docs, embeddings)  # docs 为Document列表
+    torch_gc()
+    vector_store.save_local(vs_path)
+    return vector_store
 
 
 def tree(filepath, ignore_dir_names=None, ignore_file_names=None):
@@ -184,19 +218,11 @@ class LocalDocQA:
                     logger.info(f"{file} 未能成功加载")
         if len(docs) > 0:
             logger.info("文件加载完毕，正在生成向量库")
-            if vs_path and os.path.isdir(vs_path) and "index.faiss" in os.listdir(vs_path):
-                vector_store = load_vector_store(vs_path, self.embeddings)
-                vector_store.add_documents(docs)
-                torch_gc()
-            else:
-                if not vs_path:
-                    vs_path = os.path.join(KB_ROOT_PATH,
-                                           f"""{"".join(lazy_pinyin(os.path.splitext(file)[0]))}_FAISS_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}""",
-                                           "vector_store")
-                vector_store = MyFAISS.from_documents(docs, self.embeddings)  # docs 为Document列表
-                torch_gc()
-
-            vector_store.save_local(vs_path)
+            if not vs_path:
+                vs_path = os.path.join(KB_ROOT_PATH,
+                                       f"""{"".join(lazy_pinyin(os.path.splitext(file)[0]))}_FAISS_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}""",
+                                       "vector_store")
+            vector_store = add_vector_store(vs_path, self.embeddings, docs)
             return vs_path, loaded_files
         else:
             logger.info("文件均未成功加载，请检查依赖包或替换为其他文件再次上传。")
@@ -211,13 +237,7 @@ class LocalDocQA:
             if not one_content_segmentation:
                 text_splitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
                 docs = text_splitter.split_documents(docs)
-            if os.path.isdir(vs_path) and os.path.isfile(vs_path + "/index.faiss"):
-                vector_store = load_vector_store(vs_path, self.embeddings)
-                vector_store.add_documents(docs)
-            else:
-                vector_store = MyFAISS.from_documents(docs, self.embeddings)  ##docs 为Document列表
-            torch_gc()
-            vector_store.save_local(vs_path)
+            vector_store = add_vector_store(vs_path, self.embeddings, docs)
             return vs_path, [one_title]
         except Exception as e:
             logger.error(e)
@@ -231,13 +251,7 @@ class LocalDocQA:
             docs = [Document(page_content=content + "\n", metadata=metadata)]
             text_splitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
             docs = text_splitter.split_documents(docs)
-            if os.path.isdir(vs_path) and os.path.isfile(vs_path + "/index.faiss"):
-                vector_store = load_vector_store(vs_path, self.embeddings)
-                vector_store.add_documents(docs)
-            else:
-                vector_store = MyFAISS.from_documents(docs, self.embeddings)  ##docs 为Document列表
-            torch_gc()
-            vector_store.save_local(vs_path)
+            vector_store = add_vector_store(vs_path, self.embeddings, docs)
             return vs_path
         except Exception as e:
             logger.error(e)
@@ -276,6 +290,7 @@ class LocalDocQA:
                                         vector_search_top_k=VECTOR_SEARCH_TOP_K, chunk_size=CHUNK_SIZE):
         vector_store = load_vector_store(vs_path, self.embeddings)
         # FAISS.similarity_search_with_score_by_vector = similarity_search_with_score_by_vector
+        # Milvus.similarity_search_with_score_by_vector = similarity_search_with_score_by_vector
         vector_store.chunk_conent = chunk_conent
         vector_store.score_threshold = score_threshold
         vector_store.chunk_size = chunk_size
