@@ -411,7 +411,7 @@ async def chat_llm(websocket: WebSocket):
             for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
                 resp = answer_result.llm_output["answer"]
                 history = answer_result.history
-                await websocket.send_text(resp)
+                #await websocket.send_text(resp)
             source_documents = []
 
         if type ==2:
@@ -437,7 +437,7 @@ async def chat_llm(websocket: WebSocket):
                     query=question, chat_history=history,streaming=True,knowledge_ratio = 0.5):
                 resp = result["result"]
                 history = history
-                await websocket.send_text(resp)
+               # await websocket.send_text(resp)
             source_documents = [
                 json.dumps(
                     {
