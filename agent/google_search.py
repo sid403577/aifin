@@ -6,29 +6,70 @@ from googleapiclient.discovery import build
 import urllib.parse
 import requests
 from bs4 import BeautifulSoup
-#my_api_key = "AIbaSyAEY6egFSPeadgK7oS/54iQ_ejl24s4Ggc" #The API_KEY you acquired
-#my_cse_id = "012345678910111213141:abcdef10g2h" #The search-engine-ID you created
+
+# my_api_key = "AIbaSyAEY6egFSPeadgK7oS/54iQ_ejl24s4Ggc" #The API_KEY you acquired
+# my_cse_id = "012345678910111213141:abcdef10g2h" #The search-engine-ID you created
 my_api_key = "AIzaSyAQwvxsjirV3fXxQ_oCClvg5wct0Vyzq8A"
 my_cse_id = "a641dd528fa274bc3"
 
-
-
 htmlcontent = {
-    "www.prnasia.com":{
-        "element":"div",
-        "attr":{'id': 'dvContent'}
+    "www.prnasia.com": {
+        "element": "div",
+        "attr": {'id': 'dvContent'},
+        "name": "美通社",
+        "enable":True,
+
     },
-    "finance.stockstar.com":{
-        "element":"div",
-        "attr":{'class': 'article_content'},
-        "testCaseList":['https://finance.stockstar.com/IG2022032400001037.shtml']
+    "finance.stockstar.com": {
+        "element": "div",
+        "attr": {'class': 'article_content'},
+        "testCaseList": ['https://finance.stockstar.com/IG2022032400001037.shtml'],
+        "name": "证券之星",
+        "enable":True,
     },
+    "business.sohu.com": {
+        "element": "article",
+        "attr": {'class': 'article-text'},
+        "testCaseList": ['https://business.sohu.com/a/642076928_114984?scm=1103.plate:611:0.0.1_1.0'],
+        "name": "搜狐财经",
+        "enable":True,
+    },
+    "finance.sina.com.cn": {
+        "element": "div",
+        "attr": {"class": "article"},
+        "testCaseList": ['https://finance.sina.com.cn/money/fund/jjzl/2023-06-15/doc-imyxknym3210622.shtml'],
+        "name": "新浪财经",
+        "enable":True,
+    },
+    "libattery.ofweek.com": {
+        "element": "div",
+        "attr": {"class": "artical-content"},
+        "testCaseList": ['https://libattery.ofweek.com/2022-06/ART-36002-8420-30566059.html'],
+        "name": "维科网",
+        "enable":True,
+    },
+    "origin-view.inews.qq.com": {
+        "element": "div",
+        "attr": {"id": "ArticleContent"},
+        "testCaseList": ['https://origin-view.inews.qq.com/a/20230615A05WAP00?%23=&uid='],
+        "name": "腾讯新闻子网",
+        "enable":True,
+    },
+    "finance.ce.cn": {
+        "element": "div",
+        "attr": None,
+        "testCaseList": ['http://finance.ce.cn/stock/gsgdbd/202207/09/t20220709_37849475.shtml'],
+        "name": "中国经济网",
+        "enable":False,
+    }
 }
 
-def _google_search(search_term, api_key, cse_id, **kwargs)-> List[Dict]:
+
+def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
     service = build("customsearch", "v1", developerKey=api_key)
     res = service.cse().list(q=search_term, cx=cse_id, **kwargs).execute()
     return res['items']
+
 
 def google_search(text, result_len=3):
     results = _google_search(text, my_api_key, my_cse_id, num=result_len)
@@ -41,7 +82,7 @@ def google_search(text, result_len=3):
             "link": result["link"],
         }
 
-        content = get_text(result["link"],result["displayLink"])
+        content = get_text(result["link"], result["displayLink"])
         if content:
             metadata_result["snippet"] = content
         elif "snippet" in result:
@@ -51,15 +92,19 @@ def google_search(text, result_len=3):
 
     return metadata_results
 
-def get_text(link:str,displayLink:str):
+
+def get_text(link: str, displayLink: str):
     try:
         if displayLink in htmlcontent:
             params = htmlcontent[displayLink]
-            soup = BeautifulSoup(download_page(url=link))
-            return soup.find_all(params['element'], params['attr'])[0].get_text()
+            if 'enable' in params and params['enable']:
+                soup = BeautifulSoup(download_page(url=link))
+                return soup.find_all(params['element'], params['attr'])[0].get_text()
     except Exception as e:
-        print(f"error:获取内容异常，link：{link}"+e)
+        print(f"error:获取内容异常，link：{link}" + e)
     return None
+
+
 def download_page(url, para=None):
     normalUrl = "https://api.crawlbase.com/?token=gRg5wZGhA4tZby6Ihq_6IQ&url="
     crawUrl = f"{normalUrl}{urllib.parse.quote(url)}"
@@ -72,7 +117,7 @@ def download_page(url, para=None):
         print(f"encoding:{code1}")
         text = response.content.decode(code1)
         # code = response.encoding
-        #text = response.text
+        # text = response.text
         # try:
         #     text = text.encode(code).decode('utf-8')
         # except:
@@ -86,6 +131,5 @@ def download_page(url, para=None):
 
 
 if __name__ == '__main__':
-    text= google_search("宁德时代的股价")
+    text = google_search("宁德时代的股价")
     print(text)
-
