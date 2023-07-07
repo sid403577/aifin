@@ -423,7 +423,7 @@ async def chat_llm(websocket: WebSocket):
                 json.dumps(
                     {
                         "num": inum + 1,
-                        "title": doc.metadata["source"],
+                        "title": doc.metadata["filename"],
                         "url": doc.metadata["source"],
                         "content": doc.page_content,
                         "date": doc.metadata["source"]
