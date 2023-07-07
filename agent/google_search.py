@@ -1,5 +1,7 @@
 from typing import List, Dict
 import re
+
+import chardet
 from googleapiclient.discovery import build
 import urllib.parse
 import requests
@@ -62,20 +64,22 @@ def download_page(url, para=None):
     normalUrl = "https://api.crawlbase.com/?token=gRg5wZGhA4tZby6Ihq_6IQ&url="
     crawUrl = f"{normalUrl}{urllib.parse.quote(url)}"
     if para:
-        response = requests.get(crawUrl, params=para)
+        response = requests.get(url, params=para)
     else:
-        response = requests.get(crawUrl)
-    # response.encoding = response.apparent_encoding
+        response = requests.get(url)
     if response.status_code == 200:
-        code = response.encoding
-        text = response.text
-        try:
-            text = text.encode(code).decode('utf-8')
-        except:
-            try:
-                text = text.encode(code).decode('gbk')
-            except:
-                text = text
+        code1 = chardet.detect(response.content)['encoding']
+        print(f"encoding:{code1}")
+        text = response.content.decode(code1)
+        # code = response.encoding
+        #text = response.text
+        # try:
+        #     text = text.encode(code).decode('utf-8')
+        # except:
+        #     try:
+        #         text = text.encode(code).decode('gbk')
+        #     except:
+        #         text = text
         return text
     else:
         print("failed to download the page")
