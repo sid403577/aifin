@@ -2,7 +2,7 @@ import argparse
 import json
 import os
 import shutil
-from typing import List, Optional, Dict
+from typing import List, Optional
 import urllib
 import asyncio
 import nltk
@@ -49,18 +49,15 @@ class ListDocsResponse(BaseResponse):
                 "data": ["doc1.docx", "doc2.pdf", "doc3.txt"],
             }
         }
-class SourceDocument(BaseModel):
-    num: int
-    title: str
-    url: str
-    content: str
-    date: str
+
+
+
 
 class ChatMessage(BaseModel):
     question: str = pydantic.Field(..., description="Question text")
     response: str = pydantic.Field(..., description="Response text")
     history: List[List[str]] = pydantic.Field(..., description="History text")
-    source_documents: List[Dict[str, SourceDocument]] = pydantic.Field(
+    source_documents: List[str] = pydantic.Field(
         ..., description="List of source documents and their scores"
     )
 
@@ -423,12 +420,7 @@ async def chat_llm(websocket: WebSocket):
                 history = history
                 await websocket.send_text(resp)
             source_documents = [
-                 {  "num":inum+1,
-                    "title": doc.metadata["source"],
-                    "url": doc.metadata["source"],
-                    "content": doc.page_content,
-                    "date": doc.metadata["source"]
-                }
+                f"""{"num":{inum + 1},"title":"{doc.metadata["source"]}","url":{doc.metadata["source"]},"content":{doc.page_content},"date":{doc.metadata["source"]}}"""
                 for inum, doc in enumerate(result["source_documents"])
             ]
 
@@ -439,13 +431,7 @@ async def chat_llm(websocket: WebSocket):
                 history = history
                 await websocket.send_text(resp)
             source_documents = [
-                {
-                 "num": inum + 1,
-                 "title": doc.metadata["source"],
-                 "url": doc.metadata["source"],
-                 "content": doc.page_content,
-                 "date": doc.metadata["source"]
-                 }
+                f"""{"num":{inum + 1},"title":"{doc.metadata["source"]}","url":{doc.metadata["source"]},"content":{doc.page_content},"date":{doc.metadata["source"]}}"""
                 for inum, doc in enumerate(result["source_documents"])
             ]
         chat_message = ChatMessage(
