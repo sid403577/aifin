@@ -424,7 +424,7 @@ async def chat_llm(websocket: WebSocket):
                     "title": doc.metadata["source"],
                     "url": doc.metadata["source"],
                     "content": doc.page_content,
-                    "date": doc.metadata["date"]
+                    "date": doc.metadata["source"]
                 }
                 for inum, doc in enumerate(result["source_documents"])
             ]
@@ -441,7 +441,7 @@ async def chat_llm(websocket: WebSocket):
                  "title": doc.metadata["source"],
                  "url": doc.metadata["source"],
                  "content": doc.page_content,
-                 "date": doc.metadata["date"]
+                 "date": doc.metadata["source"]
                  }
                 for inum, doc in enumerate(result["source_documents"])
             ]
