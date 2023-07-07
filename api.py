@@ -5,7 +5,6 @@ import shutil
 from typing import List, Optional
 import urllib
 import asyncio
-import itertools
 import nltk
 import pydantic
 import uvicorn

@@ -223,6 +223,26 @@ class LocalDocQA:
             logger.error(e)
             return None, [one_title]
 
+    def one_knowledge_add_content(self, vs_path, content, metadata, sentence_size):
+        try:
+            if not vs_path or not content or metadata:
+                logger.info("知识库添加错误，请确认知识库名字、标题、内容是否正确！")
+                return None
+            docs = [Document(page_content=content + "\n", metadata=metadata)]
+            text_splitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
+            docs = text_splitter.split_documents(docs)
+            if os.path.isdir(vs_path) and os.path.isfile(vs_path + "/index.faiss"):
+                vector_store = load_vector_store(vs_path, self.embeddings)
+                vector_store.add_documents(docs)
+            else:
+                vector_store = MyFAISS.from_documents(docs, self.embeddings)  ##docs 为Document列表
+            torch_gc()
+            vector_store.save_local(vs_path)
+            return vs_path
+        except Exception as e:
+            logger.error(e)
+            return None
+
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
         vector_store = load_vector_store(vs_path, self.embeddings)
         vector_store.chunk_size = self.chunk_size
