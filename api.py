@@ -452,10 +452,8 @@ async def chat_llm(websocket: WebSocket):
             ]
 
         if type == 4:
-            for result, history in local_doc_qa.get_search_result_google_answer(query=question, chat_history=history,
-                                                                                streaming=True):
+            for result, history in local_doc_qa.get_search_result_google_answer_new(query=question, chat_history=history,                                                            streaming=True):
                 if result["flag"] == 1:
-                    resp = result["result"]
                     source_documents = [
                         json.dumps(
                             {
@@ -474,18 +472,18 @@ async def chat_llm(websocket: WebSocket):
                     history = history
                     #await websocket.send_text(resp)
 
-            source_documents = [
-                json.dumps(
-                    {
-                        "num": inum + 1,
-                        "title": doc.metadata["filename"],
-                        "url": doc.metadata["source"],
-                        "content": doc.page_content,
-                        "date": doc.metadata["source"]
-                    }
-                )
-                for inum, doc in enumerate(result["source_documents"])
-            ]
+                    source_documents = [
+                        json.dumps(
+                            {
+                                "num": inum + 1,
+                                "title": doc.metadata["filename"],
+                                "url": doc.metadata["source"],
+                                "content": doc.page_content,
+                                "date": doc.metadata["source"]
+                            }
+                        )
+                        for inum, doc in enumerate(result["source_documents"])
+                    ]
         chat_message = ChatMessage(
             question=question,
             response=resp,
