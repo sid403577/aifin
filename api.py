@@ -425,8 +425,8 @@ async def chat_llm(websocket: WebSocket):
             ]
 
         if type == 3:
-            for resp, history in local_doc_qa.get_knowledge_union_google_search_based_answer(query=question, chat_history=history,
-                                                                              streaming=True,knowledge_ratio = 0.5):
+            for resp, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
+                    query=question, chat_history=history,streaming=True,knowledge_ratio = 0.5):
                 resp = resp["result"]
                 history = history
                 await websocket.send_text(resp)
