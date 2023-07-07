@@ -34,7 +34,7 @@ flag_csv_logger = gr.CSVLogger()
 
 def get_answer(query, vs_path, history, mode, score_threshold=VECTOR_SEARCH_SCORE_THRESHOLD,
                vector_search_top_k=VECTOR_SEARCH_TOP_K, chunk_conent: bool = True,
-               chunk_size=CHUNK_SIZE, streaming: bool = STREAMING):
+               chunk_size=CHUNK_SIZE, streaming: bool = STREAMING, knowledge_ratio: float = 0.5):
     if mode == "Bing搜索问答":
         for resp, history in local_doc_qa.get_search_result_based_answer(
                 query=query, chat_history=history, streaming=streaming):
@@ -62,7 +62,17 @@ def get_answer(query, vs_path, history, mode, score_threshold=VECTOR_SEARCH_SCOR
             history[-1][-1] += source
             yield history, ""
     elif mode == "搜索+知识库+LLM问答":
-        yield history, ""
+        for resp, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
+                query=query, vs_path=vs_path, chat_history=history, streaming=streaming,knowledge_ratio=knowledge_ratio):
+            source = "\n\n"
+            source += "".join(
+                [f"""<details> <summary>出处 [{i + 1}] {os.path.split(doc.metadata["source"])[-1]}</summary>\n"""
+                 f"""{doc.page_content}\n"""
+                 f"""</details>"""
+                 for i, doc in
+                 enumerate(resp["source_documents"])])
+            history[-1][-1] += source
+            yield history, ""
     elif mode == "知识库问答" and vs_path is not None and os.path.exists(vs_path) and "index.faiss" in os.listdir(
             vs_path):
         for resp, history in local_doc_qa.get_knowledge_based_answer(

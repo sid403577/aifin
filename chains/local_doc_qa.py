@@ -293,6 +293,8 @@ class LocalDocQA:
     def get_search_result_based_answer(self, query, chat_history=[], streaming: bool = STREAMING):
         results = bing_search(query)
         result_docs = search_result2docs(results)
+        #入矢量库
+
         prompt = generate_prompt(result_docs, query)
 
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
@@ -305,8 +307,50 @@ class LocalDocQA:
                         "source_documents": result_docs}
             yield response, history
 
+
+
+    def get_knowledge_union_google_search_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING,knowledge_ratio:float = 0.5):
+        """
+            描述：获取知识库和google搜索的内容集合
+            knowledge_ratio：知识库占比（0-1）
+        """
+        k_num = 0
+        result_docs:list = []
+
+        #知识库搜索
+        if knowledge_ratio>0:
+            k_num = int(self.top_k*knowledge_ratio)
+            vector_store = load_vector_store(vs_path, self.embeddings)
+            vector_store.chunk_size = self.chunk_size
+            vector_store.chunk_conent = self.chunk_conent
+            vector_store.score_threshold = self.score_threshold
+            related_docs_with_score = vector_store.similarity_search_with_score(query, k=k_num)
+            torch_gc()
+            if related_docs_with_score and len(related_docs_with_score) > 0:
+                result_docs.extend(related_docs_with_score)
+
+        # 谷歌搜索
+        if knowledge_ratio<1:
+            g_num = self.top_k-k_num
+            search_results = google_search(query,g_num)
+            search_docs = search_result2docs(search_results)
+            if search_docs and len(search_docs)>0:
+                result_docs.extend(search_docs)
+
+            prompt = generate_prompt(result_docs, query)
+
+            for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
+                                                          streaming=streaming):
+                resp = answer_result.llm_output["answer"]
+                history = answer_result.history
+                history[-1][0] = query
+                response = {"query": query,
+                            "result": resp,
+                            "source_documents": result_docs}
+                yield response, history
+
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query)
+        results = google_search(query,self.top_k)
         result_docs = search_result2docs(results)
         prompt = generate_prompt(result_docs, query)
 
@@ -319,6 +363,9 @@ class LocalDocQA:
                         "result": resp,
                         "source_documents": result_docs}
             yield response, history
+
+
+
 
     def delete_file_from_vector_store(self,
                                       filepath: str or List[str],
@@ -344,6 +391,7 @@ class LocalDocQA:
             return docs
         else:
             return [os.path.split(doc)[-1] for doc in docs]
+
 
 
 if __name__ == "__main__":
