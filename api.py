@@ -406,19 +406,32 @@ async def chat_llm(websocket: WebSocket):
     while True:
         input_json = await websocket.receive_text()
         json_data = json.loads(input_json)
-        question, history = json_data["question"], json_data["history"]
+        question, history ,type = json_data["question"], json_data["history"] ,json_data["type"]
         await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
-        for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
-            resp = answer_result.llm_output["answer"]
-            history = answer_result.history
-            await websocket.send_text(resp)
+        if type == 1:
+            for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
+                resp = answer_result.llm_output["answer"]
+                history = answer_result.history
+                await websocket.send_text(resp)
+            source_documents = []
+        if type ==2:
+            for resp, history in local_doc_qa.get_search_result_google_answer(query=question, chat_history=history, streaming=True):
+                resp = resp["result"]
+                history = history
+                await websocket.send_text(resp)
+            source_documents = [
+                f"""出处 [{inum + 1}] [{doc.metadata["source"]}]({doc.metadata["source"]}) \n\n{doc.page_content}\n\n"""
+                for inum, doc in enumerate(resp["source_documents"])
+            ]
 
-            chat_message = ChatMessage(
-                question=question,
-                response=resp,
-                history=history,
-                source_documents=[],
-            )
+        chat_message = ChatMessage(
+            question=question,
+            response=resp,
+            history=history,
+            source_documents=source_documents,
+        )
+
+
         await websocket.send_text(
             json.dumps(
                 chat_message,
@@ -427,6 +440,7 @@ async def chat_llm(websocket: WebSocket):
             )
         )
         turn += 1
+
 
 async def stream_chat(websocket: WebSocket, knowledge_base_id: str):
     await websocket.accept()
