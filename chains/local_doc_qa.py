@@ -264,6 +264,12 @@ class LocalDocQA:
         vector_store.score_threshold = self.score_threshold
         related_docs_with_score = vector_store.similarity_search_with_score(query, k=self.top_k)
         torch_gc()
+        if streaming:
+            response = {"query": query,
+                        "result": "",
+                        "source_documents": related_docs_with_score
+                        }
+            yield response, chat_history
         if len(related_docs_with_score) > 0:
             prompt = generate_prompt(related_docs_with_score, query)
         else:
@@ -308,8 +314,12 @@ class LocalDocQA:
     def get_search_result_based_answer(self, query, chat_history=[], streaming: bool = STREAMING):
         results = bing_search(query)
         result_docs = search_result2docs(results)
-        #入矢量库
-
+        if streaming:
+            response = {"query": query,
+                        "result": "",
+                        "source_documents": result_docs
+                        }
+            yield response, chat_history
         prompt = generate_prompt(result_docs, query)
 
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
@@ -323,6 +333,26 @@ class LocalDocQA:
             yield response, history
 
 
+    def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
+        results = google_search(query,self.top_k)
+        result_docs = search_result2docs(results)
+        if streaming:
+            response = {"query": query,
+                        "result": "",
+                        "source_documents": result_docs
+                        }
+            yield response, chat_history
+        prompt = generate_prompt(result_docs, query)
+
+        for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
+                                                      streaming=streaming):
+            resp = answer_result.llm_output["answer"]
+            history = answer_result.history
+            history[-1][0] = query
+            response = {"query": query,
+                        "result": resp,
+                        "source_documents": result_docs}
+            yield response, history
 
     def get_knowledge_union_google_search_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING,knowledge_ratio:float = 0.5):
         """
@@ -352,21 +382,13 @@ class LocalDocQA:
             if search_docs and len(search_docs)>0:
                 result_docs.extend(search_docs)
 
-            prompt = generate_prompt(result_docs, query)
+        if streaming:
+            response = {"query": query,
+                        "result": "",
+                        "source_documents": result_docs
+                        }
+            yield response, chat_history
 
-            for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
-                                                          streaming=streaming):
-                resp = answer_result.llm_output["answer"]
-                history = answer_result.history
-                history[-1][0] = query
-                response = {"query": query,
-                            "result": resp,
-                            "source_documents": result_docs}
-                yield response, history
-
-    def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query,self.top_k)
-        result_docs = search_result2docs(results)
         prompt = generate_prompt(result_docs, query)
 
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
@@ -378,29 +400,6 @@ class LocalDocQA:
                         "result": resp,
                         "source_documents": result_docs}
             yield response, history
-
-    def get_search_result_google_answer_new(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query,self.top_k)
-        result_docs = search_result2docs(results)
-        response = {"query": query,
-                    "flag": 1,
-                    "source_documents": result_docs
-                    }
-        yield response, chat_history
-
-        prompt = generate_prompt(result_docs, query)
-
-        for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
-                                                      streaming=streaming):
-            resp = answer_result.llm_output["answer"]
-            history = answer_result.history
-            history[-1][0] = query
-            response = {"query": query,
-                        "result": resp,
-                        "source_documents": result_docs,
-                        "flag": 0}
-            yield response, history
-
 
 
     def delete_file_from_vector_store(self,
