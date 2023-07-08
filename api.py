@@ -441,7 +441,7 @@ async def chat_llm(websocket: WebSocket):
         json_data = json.loads(input_json)
         question, history ,type = json_data["question"], json_data["history"] ,json_data["type"]
         await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
-        if type == 1:
+        if type is None:
             for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
                 resp = answer_result.llm_output["answer"]
                 history = answer_result.history
@@ -474,6 +474,8 @@ async def chat_llm(websocket: WebSocket):
                             "rootUrl": get_root_domain(doc.metadata.get("url")),
                             "content": doc.page_content,
                             "date": doc.metadata.get("date"),
+                            "score": doc.metadata.get("score"),
+                            "source": doc.metadata.get("source"),
                         }
                     )
                     for inum, doc in enumerate(result["source_documents"])
@@ -494,8 +496,9 @@ async def chat_llm(websocket: WebSocket):
 
         if type == 3:
             for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
-                    query=question,vs_path="LangChainCollection", chat_history=history,streaming=True,knowledge_ratio = 0.5):
-                if ""!= result["result"]:
+                    query=question, vs_path="LangChainCollection", chat_history=history, streaming=True,
+                    knowledge_ratio=0.5):
+                if "" != result["result"]:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
                 source_documents = [
                     json.dumps(
@@ -506,6 +509,8 @@ async def chat_llm(websocket: WebSocket):
                             "rootUrl": get_root_domain(doc.metadata.get("url")),
                             "content": doc.page_content,
                             "date": doc.metadata.get("date"),
+                            "score": doc.metadata.get("score"),
+                            "source": doc.metadata.get("source"),
                         }
                     )
                     for inum, doc in enumerate(result["source_documents"])
@@ -524,8 +529,8 @@ async def chat_llm(websocket: WebSocket):
                     )
                 )
 
-        if type is None:
-            for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
+        if type == 4:
+            for result, history in local_doc_qa.get_knowledge_based_answer(
                     query=question, vs_path="LangChainCollection", chat_history=history, streaming=True,
                     knowledge_ratio=0.5):
                 if "" != result["result"]:
@@ -539,6 +544,8 @@ async def chat_llm(websocket: WebSocket):
                             "rootUrl": get_root_domain(doc.metadata.get("url")),
                             "content": doc.page_content,
                             "date": doc.metadata.get("date"),
+                            "score": doc.metadata.get("score"),
+                            "source": doc.metadata.get("source"),
                         }
                     )
                     for inum, doc in enumerate(result["source_documents"])
@@ -548,6 +555,24 @@ async def chat_llm(websocket: WebSocket):
                     response=result["result"],
                     history=history,
                     source_documents=source_documents,
+                )
+                await websocket.send_text(
+                    json.dumps(
+                        chat_message,
+                        cls=ChatMessageEncoder,
+                        ensure_ascii=False,
+                    )
+                )
+
+        else:
+            for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
+                resp = answer_result.llm_output["answer"]
+                history = answer_result.history
+                chat_message = ChatMessage(
+                    question=question,
+                    response=resp,
+                    history=history,
+                    source_documents=[],
                 )
                 await websocket.send_text(
                     json.dumps(
