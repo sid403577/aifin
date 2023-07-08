@@ -78,6 +78,7 @@ def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
 
 
 def google_search(text, result_len=3):
+    print("google_search开始")
     results = _google_search(text, my_api_key, my_cse_id, num=result_len)
     metadata_results = []
     if len(results) == 0:
@@ -95,7 +96,7 @@ def google_search(text, result_len=3):
             metadata_result["snippet"] = result["snippet"]
 
         metadata_results.append(metadata_result)
-
+    print("google_search结束")
     return metadata_results
 
 
