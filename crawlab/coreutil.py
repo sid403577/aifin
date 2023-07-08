@@ -7,6 +7,9 @@ import urllib.parse
 import requests
 from bs4 import BeautifulSoup
 
+from configs.model_config import SENTENCE_SIZE
+from textsplitter import ChineseTextSplitter
+
 normalUrl = "https://api.crawlbase.com/?token=gRg5wZGhA4tZby6Ihq_6IQ"
 
 htmlcontent={
@@ -177,14 +180,9 @@ def load() -> List[Document]:
     return docs
 
 
-def load_and_split(docs: list[Document]) -> list[Document]:
+def load_and_split(docs: list[Document],sentence_size=SENTENCE_SIZE) -> list[Document]:
     """Load documents and split into chunks."""
-    _text_splitter = CharacterTextSplitter(
-        separator="  ",
-        chunk_size=1000,
-        chunk_overlap=200,
-        length_function=len,
-    )
+    _text_splitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
     return _text_splitter.split_documents(docs)
 
 
