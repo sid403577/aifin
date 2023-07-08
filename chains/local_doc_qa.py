@@ -146,8 +146,10 @@ def search_result2docs(search_results):
     docs = []
     for result in search_results:
         doc = Document(page_content=result["snippet"] if "snippet" in result.keys() else "",
-                       metadata={"source": result["link"] if "link" in result.keys() else "",
-                                 "filename": result["title"] if "title" in result.keys() else ""})
+                       metadata={"url": result["link"] if "link" in result.keys() else "",
+                                 "title": result["title"] if "title" in result.keys() else "",
+                                 "source": 'online',
+                                 })
         docs.append(doc)
     return docs
 
