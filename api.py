@@ -427,6 +427,13 @@ def chat(
 
 
 async def chat_llm(websocket: WebSocket):
+    from urllib.parse import urlparse
+    def get_root_domain(url):
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+        root_domain = '.'.join(domain.split('.')[-2:])
+        return root_domain
+
     await websocket.accept()
     turn = 1
     while True:
@@ -464,6 +471,7 @@ async def chat_llm(websocket: WebSocket):
                             "num": inum + 1,
                             "title": doc.metadata.get("title"),
                             "url": doc.metadata.get("url"),
+                            "rootUrl": get_root_domain(doc.metadata.get("url")),
                             "content": doc.page_content,
                             "date": doc.metadata.get("date"),
                         }
@@ -495,6 +503,7 @@ async def chat_llm(websocket: WebSocket):
                             "num": inum + 1,
                             "title": doc.metadata.get("title"),
                             "url": doc.metadata.get("url"),
+                            "rootUrl": get_root_domain(doc.metadata.get("url")),
                             "content": doc.page_content,
                             "date": doc.metadata.get("date"),
                         }
@@ -515,16 +524,21 @@ async def chat_llm(websocket: WebSocket):
                     )
                 )
 
-        if type == 4:
-            for result, history in local_doc_qa.get_search_result_google_answer(query=question, chat_history=history,                                                            streaming=True):
+        if type is None:
+            for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
+                    query=question, vs_path="LangChainCollection", chat_history=history, streaming=True,
+                    knowledge_ratio=0.5):
+                if "" != result["result"]:
+                    await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
                 source_documents = [
                     json.dumps(
                         {
                             "num": inum + 1,
-                            "title": doc.metadata["title"],
-                            "url": doc.metadata["url"],
+                            "title": doc.metadata.get("title"),
+                            "url": doc.metadata.get("url"),
+                            "rootUrl": get_root_domain(doc.metadata.get("url")),
                             "content": doc.page_content,
-                            "date": doc.metadata["source"]
+                            "date": doc.metadata.get("date"),
                         }
                     )
                     for inum, doc in enumerate(result["source_documents"])
