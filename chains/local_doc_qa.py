@@ -352,12 +352,7 @@ class LocalDocQA:
             vector_store.chunk_conent = self.chunk_conent
             vector_store.score_threshold = self.score_threshold
             related_docs_with_score = vector_store.similarity_search_with_score(query, k=k_num)
-            if streaming:
-                response = {"query": query,
-                            "result": "",
-                            "source_documents": related_docs_with_score
-                            }
-                yield response, chat_history
+
             torch_gc()
             if related_docs_with_score and len(related_docs_with_score) > 0:
                 result_docs.extend(related_docs_with_score)
@@ -367,15 +362,15 @@ class LocalDocQA:
             g_num = self.top_k-k_num
             search_results = google_search(query,g_num)
             search_docs = search_result2docs(search_results)
-            if streaming:
-                response = {"query": query,
-                            "result": "",
-                            "source_documents": search_docs
-                            }
-                yield response, chat_history
+
             if search_docs and len(search_docs)>0:
                 result_docs.extend(search_docs)
-
+        if streaming:
+            response = {"query": query,
+                        "result": "",
+                        "source_documents": result_docs
+                        }
+            yield response, chat_history
         prompt = generate_prompt(result_docs, query)
 
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
