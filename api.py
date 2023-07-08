@@ -438,8 +438,19 @@ async def chat_llm(websocket: WebSocket):
             for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
                 resp = answer_result.llm_output["answer"]
                 history = answer_result.history
-                #await websocket.send_text(resp)
-            source_documents = []
+                chat_message = ChatMessage(
+                    question=question,
+                    response=resp,
+                    history=history,
+                    source_documents=source_documents,
+                )
+                await websocket.send_text(
+                    json.dumps(
+                        chat_message,
+                        cls=ChatMessageEncoder,
+                        ensure_ascii=False,
+                    )
+                )
 
         if type ==2:
             for result, history in local_doc_qa.get_search_result_google_answer(query=question,
@@ -449,8 +460,8 @@ async def chat_llm(websocket: WebSocket):
                     json.dumps(
                         {
                             "num": inum + 1,
-                            "title": doc.metadata["filename"],
-                            "url": doc.metadata["source"],
+                            "title": doc.metadata["title"],
+                            "url": doc.metadata["url"],
                             "content": doc.page_content,
                             "date": doc.metadata["source"]
                         }
