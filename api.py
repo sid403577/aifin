@@ -415,74 +415,66 @@ async def chat_llm(websocket: WebSocket):
             source_documents = []
 
         if type ==2:
-            for result, history in local_doc_qa.get_search_result_google_answer_new(query=question,
+            for result, history in local_doc_qa.get_search_result_google_answer(query=question,
                                                                                     chat_history=history,
                                                                                     streaming=True):
-                if result["flag"] == 1:
-                    source_documents = [
-                        json.dumps(
-                            {
-                                "num": inum + 1,
-                                "title": doc.metadata["filename"],
-                                "url": doc.metadata["source"],
-                                "content": doc.page_content,
-                                "date": doc.metadata["source"]
-                            }
-                        )
-                        for inum, doc in enumerate(result["source_documents"])
-                    ]
-                    chat_message = ChatMessage(
-                        question=question,
-                        response="",
-                        history=history,
-                        source_documents=source_documents,
+                source_documents = [
+                    json.dumps(
+                        {
+                            "num": inum + 1,
+                            "title": doc.metadata["filename"],
+                            "url": doc.metadata["source"],
+                            "content": doc.page_content,
+                            "date": doc.metadata["source"]
+                        }
                     )
-                    await websocket.send_text(
-                        json.dumps(
-                            chat_message,
-                            cls=ChatMessageEncoder,
-                            ensure_ascii=False,
-                        )
+                    for inum, doc in enumerate(result["source_documents"])
+                ]
+                chat_message = ChatMessage(
+                    question=question,
+                    response=result["result"],
+                    history=history,
+                    source_documents=source_documents,
+                )
+                await websocket.send_text(
+                    json.dumps(
+                        chat_message,
+                        cls=ChatMessageEncoder,
+                        ensure_ascii=False,
                     )
-                else:
-                    resp = result["result"]
-                    history = history
-                    # await websocket.send_text(resp)
-
-                    source_documents = [
-                        json.dumps(
-                            {
-                                "num": inum + 1,
-                                "title": doc.metadata["filename"],
-                                "url": doc.metadata["source"],
-                                "content": doc.page_content,
-                                "date": doc.metadata["source"]
-                            }
-                        )
-                        for inum, doc in enumerate(result["source_documents"])
-                    ]
+                )
 
         if type == 3:
             for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
                     query=question,vs_path="LangChainCollection", chat_history=history,streaming=True,knowledge_ratio = 0.5):
-                resp = result["result"]
-                history = history
-               # await websocket.send_text(resp)
-            source_documents = [
-                json.dumps(
-                    {
-                        "num": inum + 1,
-                        "title": doc.metadata["filename"],
-                        "url": doc.metadata["source"],
-                        "content": doc.page_content,
-                        "date": doc.metadata["source"]
-                    }
+                source_documents = [
+                    json.dumps(
+                        {
+                            "num": inum + 1,
+                            "title": doc.metadata["title"],
+                            "url": doc.metadata["url"],
+                            "content": doc.page_content,
+                            "date": doc.metadata["source"]
+                        }
+                    )
+                    for inum, doc in enumerate(result["source_documents"])
+                ]
+                chat_message = ChatMessage(
+                    question=question,
+                    response=result["result"],
+                    history=history,
+                    source_documents=source_documents,
                 )
-                for inum, doc in enumerate(result["source_documents"])
-            ]
+                await websocket.send_text(
+                    json.dumps(
+                        chat_message,
+                        cls=ChatMessageEncoder,
+                        ensure_ascii=False,
+                    )
+                )
 
         if type == 4:
-            for result, history in local_doc_qa.get_search_result_google_answer_new(query=question, chat_history=history,                                                            streaming=True):
+            for result, history in local_doc_qa.get_search_result_google_answer(query=question, chat_history=history,                                                            streaming=True):
                 if result["flag"] == 1:
                     source_documents = [
                         json.dumps(
