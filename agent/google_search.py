@@ -78,6 +78,7 @@ def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
 
 
 def google_search(text, result_len=3):
+    print("google_search开始")
     results = _google_search(text, my_api_key, my_cse_id, num=result_len)
     metadata_results = []
     if len(results) == 0:
@@ -95,7 +96,7 @@ def google_search(text, result_len=3):
             metadata_result["snippet"] = result["snippet"]
 
         metadata_results.append(metadata_result)
-
+    print("google_search结束")
     return metadata_results
 
 
@@ -104,8 +105,10 @@ def get_text(link: str, displayLink: str):
         if displayLink in htmlcontent:
             params = htmlcontent[displayLink]
             if 'enable' in params and params['enable']:
-                soup = BeautifulSoup(download_page(url=link))
-                return soup.find_all(params['element'], params['attr'])[0].get_text()
+                text = download_page(url=link)
+                if text:
+                    soup = BeautifulSoup(text)
+                    return soup.find_all(params['element'], params['attr'])[0].get_text()
     except Exception as e:
         print(f"error:获取内容异常，link：{link}" + e)
     return None
@@ -119,18 +122,19 @@ def download_page(url, para=None):
     else:
         response = requests.get(url)
     if response.status_code == 200:
-        code1 = chardet.detect(response.content)['encoding']
-        print(f"encoding:{code1}")
-        text = response.content.decode(code1)
-        # code = response.encoding
-        # text = response.text
-        # try:
-        #     text = text.encode(code).decode('utf-8')
-        # except:
-        #     try:
-        #         text = text.encode(code).decode('gbk')
-        #     except:
-        #         text = text
+        # 以下为乱码异常处理
+        try:
+            code1 = chardet.detect(response.content)['encoding']
+            text = response.content.decode(code1)
+        except:
+            code = response.encoding
+            try:
+                text = response.text.encode(code).decode('utf-8')
+            except:
+                try:
+                    text = response.text.encode(code).decode('gbk')
+                except:
+                    text = response.text
         return text
     else:
         print("failed to download the page")
