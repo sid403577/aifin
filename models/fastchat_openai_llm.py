@@ -89,7 +89,9 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
         print(self.model_name, self.api_key, self.api_base_url)
         completion = openai.ChatCompletion.create(
             model=self.model_name,
-            messages=self.build_message_list(prompt)
+            messages=self.build_message_list(prompt),
+            temperature=self.temperature,
+            stream=True,
         )
         print(f"response:{completion.choices[0].message.content}")
         print(f"+++++++++++++++++++++++++++++++++++")
@@ -100,6 +102,8 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
         build_message_list: Collection[Dict[str, str]] = []
         history = self.history[-self.history_len:] if self.history_len > 0 else []
         for i, (old_query, response) in enumerate(history):
+            if old_query is None:
+                continue
             user_build_message = _build_message_template()
             user_build_message['role'] = 'user'
             user_build_message['content'] = old_query
@@ -133,6 +137,7 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
                 "Could not import openai python package. "
                 "Please install it with `pip install openai`."
             )
+        self.history = history
         # create a chat completion
         completion = openai.ChatCompletion.create(
             model=self.model_name,
