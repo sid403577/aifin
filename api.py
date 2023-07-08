@@ -431,7 +431,7 @@ async def chat_llm(websocket: WebSocket):
     def get_root_domain(url):
         parsed_url = urlparse(url)
         domain = parsed_url.netloc
-        root_domain = '.'.join(domain.split('.')[-2:])
+        root_domain = '.'.join(domain.split('.')[-3:])
         return root_domain
 
     await websocket.accept()
