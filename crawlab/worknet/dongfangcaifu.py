@@ -7,7 +7,7 @@ import urllib.parse
 import requests
 from bs4 import BeautifulSoup
 
-normalUrl = "https://api.crawlbase.com/?token=FCUHV2ys-D2Nf8Eq4_QJsQ&url="
+normalUrl = "https://api.crawlbase.com/?token=gRg5wZGhA4tZby6Ihq_6IQ&url="
 
 
 def download_page(url, para=None):

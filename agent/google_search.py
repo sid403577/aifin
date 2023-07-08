@@ -61,9 +61,15 @@ htmlcontent = {
         "testCaseList": ['http://finance.ce.cn/stock/gsgdbd/202207/09/t20220709_37849475.shtml'],
         "name": "中国经济网",
         "enable":False,
+    },
+    "cn.nytimes.com": {
+        "element": "section",
+        "attr": {"class":"article-body"},
+        "testCaseList": ['https://cn.nytimes.com/business/20211222/china-catl-electric-car-batteries/'],
+        "name": "纽约时报中文网",
+        "enable":True,
     }
 }
-
 
 def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
     service = build("customsearch", "v1", developerKey=api_key)
