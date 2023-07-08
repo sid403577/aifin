@@ -6,6 +6,9 @@ from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
 from langchain.vectorstores import Milvus
 from langchain.text_splitter import TextSplitter, CharacterTextSplitter
 
+from configs.model_config import SENTENCE_SIZE
+from textsplitter import ChineseTextSplitter
+
 embedding_model_dict = {
     "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
     "ernie-base": "nghuyong/ernie-3.0-base-zh",
@@ -27,14 +30,9 @@ def load() -> List[Document]:
     docs.append(doc)
     return docs
 
-def load_and_split(docs:list[Document]) -> list[Document]:
+def load_and_split(docs:list[Document],sentence_size=SENTENCE_SIZE) -> list[Document]:
     """Load documents and split into chunks."""
-    _text_splitter = CharacterTextSplitter(
-        separator="  ",
-        chunk_size=1000,
-        chunk_overlap=200,
-        length_function=len,
-    )
+    _text_splitter = ChineseTextSplitter(pdf=False, sentence_size=sentence_size)
     return _text_splitter.split_documents(docs)
 
 def store(docs:list[Document]):
