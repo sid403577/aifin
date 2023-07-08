@@ -93,9 +93,10 @@ def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
     return res['items']
 
 
-def google_search(text, result_len=3):
+def google_search(text, result_len=10):
     print("google_search开始")
     results = _google_search(text, my_api_key, my_cse_id, num=result_len)
+    print(f"results:{results}")
     metadata_results = []
     if len(results) == 0:
         return [{"Result": "No good Google Search Result was found"}]
@@ -126,8 +127,7 @@ def get_text(link: str, displayLink: str):
                     soup = BeautifulSoup(text)
                     return soup.find_all(params['element'], params['attr'])[0].get_text()
     except Exception as e:
-        print(f"error:获取内容异常，link：{link}" + e)
-    return None
+        print(f"error:获取内容异常，link：{link},异常信息：{e}")
 
 
 def download_page(url, para=None):
@@ -157,5 +157,5 @@ def download_page(url, para=None):
 
 
 if __name__ == '__main__':
-    text = google_search("宁德时代的股价")
+    text = google_search("宁德时代")
     print(text)
