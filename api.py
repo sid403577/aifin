@@ -449,7 +449,7 @@ async def chat_llm(websocket: WebSocket):
                     question=question,
                     response=resp,
                     history=history,
-                    source_documents=source_documents,
+                    source_documents=[],
                 )
                 await websocket.send_text(
                     json.dumps(
