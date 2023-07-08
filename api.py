@@ -401,11 +401,13 @@ def docs2sdocs(docs):
     source_documents = [
         json.dumps(
             {
-                "num": inum + 1,
-                "title": doc.metadata["filename"],
-                "url": doc.metadata["source"],
+                "title": doc.metadata.get("title"),
+                "date": doc.metadata.get("date"),
+                "url": doc.metadata.get("url"),
+                "source": doc.metadata.get("source"),
+                "type": doc.metadata.get("type"),
+                "score": doc.metadata.get("score"),
                 "content": doc.page_content,
-                "date": doc.metadata["source"]
             }
         )
         for inum, doc in enumerate(result["source_documents"])
