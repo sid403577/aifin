@@ -352,17 +352,17 @@ class LocalDocQA:
             if search_docs and len(search_docs)>0:
                 result_docs.extend(search_docs)
 
-            prompt = generate_prompt(result_docs, query)
+        prompt = generate_prompt(result_docs, query)
 
-            for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
-                                                          streaming=streaming):
-                resp = answer_result.llm_output["answer"]
-                history = answer_result.history
-                history[-1][0] = query
-                response = {"query": query,
-                            "result": resp,
-                            "source_documents": result_docs}
-                yield response, history
+        for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
+                                                      streaming=streaming):
+            resp = answer_result.llm_output["answer"]
+            history = answer_result.history
+            history[-1][0] = query
+            response = {"query": query,
+                        "result": resp,
+                        "source_documents": result_docs}
+            yield response, history
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
         results = google_search(query,self.top_k)
