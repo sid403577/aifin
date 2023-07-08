@@ -4,6 +4,7 @@ import re
 import sys
 import urllib.parse
 
+import chardet
 import requests
 from bs4 import BeautifulSoup
 
@@ -38,7 +39,20 @@ def download_page(url, para=None):
         response = requests.get(crawUrl)
     # response.encoding = response.apparent_encoding
     if response.status_code == 200:
-        return response.text
+        # 以下为乱码异常处理
+        try:
+            code1 = chardet.detect(response.content)['encoding']
+            text = response.content.decode(code1)
+        except:
+            code = response.encoding
+            try:
+                text = response.text.encode(code).decode('utf-8')
+            except:
+                try:
+                    text = response.text.encode(code).decode('gbk')
+                except:
+                    text = response.text
+        return text
     else:
         print("failed to download the page")
 

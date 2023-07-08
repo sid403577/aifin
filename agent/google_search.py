@@ -1,11 +1,10 @@
+import urllib.parse
 from typing import List, Dict
-import re
 
 import chardet
-from googleapiclient.discovery import build
-import urllib.parse
 import requests
 from bs4 import BeautifulSoup
+from googleapiclient.discovery import build
 
 # my_api_key = "AIbaSyAEY6egFSPeadgK7oS/54iQ_ejl24s4Ggc" #The API_KEY you acquired
 # my_cse_id = "012345678910111213141:abcdef10g2h" #The search-engine-ID you created
@@ -17,7 +16,8 @@ htmlcontent = {
         "element": "div",
         "attr": {'id': 'dvContent'},
         "name": "美通社",
-        "enable":True,
+        "enable": True,
+        "sort": 1,
 
     },
     "finance.stockstar.com": {
@@ -25,51 +25,67 @@ htmlcontent = {
         "attr": {'class': 'article_content'},
         "testCaseList": ['https://finance.stockstar.com/IG2022032400001037.shtml'],
         "name": "证券之星",
-        "enable":True,
+        "enable": True,
+        "sort": 2,
     },
     "business.sohu.com": {
         "element": "article",
         "attr": {'class': 'article-text'},
         "testCaseList": ['https://business.sohu.com/a/642076928_114984?scm=1103.plate:611:0.0.1_1.0'],
         "name": "搜狐财经",
-        "enable":True,
+        "enable": True,
+        "sort": 3,
     },
     "finance.sina.com.cn": {
         "element": "div",
         "attr": {"class": "article"},
         "testCaseList": ['https://finance.sina.com.cn/money/fund/jjzl/2023-06-15/doc-imyxknym3210622.shtml'],
         "name": "新浪财经",
-        "enable":True,
+        "enable": True,
+        "sort": 4,
     },
     "libattery.ofweek.com": {
         "element": "div",
         "attr": {"class": "artical-content"},
         "testCaseList": ['https://libattery.ofweek.com/2022-06/ART-36002-8420-30566059.html'],
         "name": "维科网",
-        "enable":True,
+        "enable": True,
+        "sort": 5,
     },
     "origin-view.inews.qq.com": {
         "element": "div",
         "attr": {"id": "ArticleContent"},
         "testCaseList": ['https://origin-view.inews.qq.com/a/20230615A05WAP00?%23=&uid='],
         "name": "腾讯新闻子网",
-        "enable":True,
+        "enable": True,
+        "sort": 6,
     },
     "finance.ce.cn": {
         "element": "div",
-        "attr": None,
+        "attr": {"class": "content"},
         "testCaseList": ['http://finance.ce.cn/stock/gsgdbd/202207/09/t20220709_37849475.shtml'],
         "name": "中国经济网",
-        "enable":False,
+        "enable": True,
+        "sort": 7,
     },
     "cn.nytimes.com": {
         "element": "section",
-        "attr": {"class":"article-body"},
+        "attr": {"class": "article-body"},
         "testCaseList": ['https://cn.nytimes.com/business/20211222/china-catl-electric-car-batteries/'],
         "name": "纽约时报中文网",
-        "enable":True,
+        "enable": True,
+        "sort": 8,
+    },
+    "www.reuters.com": {
+        "element": "div",
+        "attr": {"class": "ArticleBodyWrapper"},
+        "testCaseList": ['https://www.reuters.com/article/amperex-germany-ev-battery-plant-0709-mo-idCNKBS1K005E'],
+        "name": "路透社网站",
+        "enable": True,
+        "sort": 9,
     }
 }
+
 
 def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
     service = build("customsearch", "v1", developerKey=api_key)
