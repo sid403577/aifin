@@ -358,13 +358,13 @@ class LocalDocQA:
                 result_docs.extend(related_docs_with_score)
 
         # 谷歌搜索
-        if knowledge_ratio<1:
-            g_num = self.top_k-k_num
-            search_results = google_search(query,g_num,self.llm)
-            search_docs = search_result2docs(search_results)
-
-            if search_docs and len(search_docs)>0:
-                result_docs.extend(search_docs)
+        # if knowledge_ratio<1:
+        #     g_num = self.top_k-k_num
+        #     search_results = google_search(query,g_num,self.llm)
+        #     search_docs = search_result2docs(search_results)
+        #
+        #     if search_docs and len(search_docs)>0:
+        #         result_docs.extend(search_docs)
         if streaming:
             response = {"query": query,
                         "result": "",
