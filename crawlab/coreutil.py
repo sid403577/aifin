@@ -104,10 +104,10 @@ def eastmoney(domain:str,code: str, type: str, startPage=1):  # 两个参数分�
             try:
                 date = data[i]['date']
                 if type == "1":
-                    s_time = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').date()
-                    now_time = datetime.datetime.now().date()
-                    if s_time < now_time:
-                        print(f"当天数据已经处理完成，跳出循环")
+                    s_date = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').date()
+                    Yesterday = datetime.date.today()-datetime.timedelta(days=1)
+                    if s_date == Yesterday:
+                        print(f"昨天的数据已经处理完成，跳出循环")
                         flag = False
                         break
 
