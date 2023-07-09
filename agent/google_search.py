@@ -113,6 +113,7 @@ def google_search(text, result_len=10,llm: BaseAnswer = None):
             answer_result = llm.generatorAnswer(prompt=prompt, history=[],streaming=False)
             resp = answer_result.llm_output["answer"]
             metadata_result["snippet"] = resp
+            print("内容数据设置完成---------")
         elif "snippet" in result:
             metadata_result["snippet"] = result["snippet"]
 
@@ -122,6 +123,7 @@ def google_search(text, result_len=10,llm: BaseAnswer = None):
 
 
 def get_text(link: str, displayLink: str):
+    print("开始获取html内容")
     try:
         if displayLink in htmlcontent:
             params = htmlcontent[displayLink]
@@ -132,6 +134,7 @@ def get_text(link: str, displayLink: str):
                     return soup.find_all(params['element'], params['attr'])[0].get_text()
     except Exception as e:
         print(f"error:获取内容异常，link：{link},异常信息：{e}")
+    print("获取html内容结束")
 
 
 def download_page(url, para=None):
