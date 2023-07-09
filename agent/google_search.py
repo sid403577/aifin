@@ -108,12 +108,17 @@ def google_search(text, result_len=10,llm: BaseAnswer = None):
 
         content = get_text(result["link"], result["displayLink"])
         if content:
-            print("调用llm模型获取摘要数据---------")
-            prompt = PROMPT_TEMPLATE.replace("{question}", text).replace("{context}", content)
-            answer_result = llm.generatorAnswer(prompt=prompt, history=[],streaming=False)
-            resp = answer_result.llm_output["answer"]
-            metadata_result["snippet"] = resp
-            print("内容数据设置完成---------")
+            try:
+                print("调用llm模型获取摘要数据---------")
+                prompt = PROMPT_TEMPLATE.replace("{question}", text).replace("{context}", content)
+                answer_result = llm.generatorAnswer(prompt=prompt, history=[],streaming=False)
+                resp = answer_result.llm_output["answer"]
+                metadata_result["snippet"] = resp
+                print("内容数据设置完成---------")
+            except:
+                print("error：google搜索内容调用大模型异常，")
+                metadata_result["snippet"] = content
+
         elif "snippet" in result:
             metadata_result["snippet"] = result["snippet"]
 
@@ -132,8 +137,8 @@ def get_text(link: str, displayLink: str):
                 if text:
                     soup = BeautifulSoup(text)
                     return soup.find_all(params['element'], params['attr'])[0].get_text()
-    except Exception as e:
-        print(f"error:获取内容异常，link：{link},异常信息：{e}")
+    except:
+        print(f"error:调用get_text获取内容异常，link：{link}")
     print("获取html内容结束")
 
 
