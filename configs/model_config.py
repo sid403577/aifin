@@ -194,9 +194,9 @@ BING_SEARCH_URL = "https://api.bing.microsoft.com/v7.0/search"
 # 是因为服务器加了防火墙，需要联系管理员加白名单，如果公司的服务器的话，就别想了GG
 BING_SUBSCRIPTION_KEY = ""
 
-GOOGLE_API_KEY = "AIzaSyAQwvxsjirV3fXxQ_oCClvg5wct0Vyzq8A"
+GOOGLE_API_KEY = "AIzaSyACpSZ6gtDOKFadgM651TNu7DdzvtStX6Y"
 
-GOOGLE_CSE_ID = "a641dd528fa274bc3"
+GOOGLE_CSE_ID = "d4451a0622ff94fc7"
 
 # 是否开启中文标题加强，以及标题增强的相关配置
 # 通过增加标题判断，判断哪些文本为标题，并在metadata中进行标记；

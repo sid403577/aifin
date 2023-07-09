@@ -6,10 +6,10 @@ import requests
 from bs4 import BeautifulSoup
 from googleapiclient.discovery import build
 
-# my_api_key = "AIbaSyAEY6egFSPeadgK7oS/54iQ_ejl24s4Ggc" #The API_KEY you acquired
-# my_cse_id = "012345678910111213141:abcdef10g2h" #The search-engine-ID you created
-my_api_key = "AIzaSyAQwvxsjirV3fXxQ_oCClvg5wct0Vyzq8A"
-my_cse_id = "a641dd528fa274bc3"
+from configs.model_config import GOOGLE_API_KEY, GOOGLE_CSE_ID
+
+#my_api_key = "AIzaSyACpSZ6gtDOKFadgM651TNu7DdzvtStX6Y"
+#my_cse_id = "d4451a0622ff94fc7"
 
 htmlcontent = {
     "www.prnasia.com": {
@@ -95,7 +95,7 @@ def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
 
 def google_search(text, result_len=10):
     print("google_search开始")
-    results = _google_search(text, my_api_key, my_cse_id, num=result_len)
+    results = _google_search(text, GOOGLE_API_KEY, GOOGLE_CSE_ID, num=result_len)
     print(f"results:{results}")
     metadata_results = []
     if len(results) == 0:
