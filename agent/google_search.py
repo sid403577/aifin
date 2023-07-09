@@ -6,8 +6,9 @@ import requests
 from bs4 import BeautifulSoup
 from googleapiclient.discovery import build
 from models.base import BaseAnswer
-from configs.model_config import GOOGLE_API_KEY, GOOGLE_CSE_ID, PROMPT_TEMPLATE
-
+from configs.model_config import GOOGLE_API_KEY, GOOGLE_CSE_ID, PROMPT_TEMPLATE, SENTENCE_SIZE
+from textsplitter import ChineseTextSplitter
+from langchain.docstore.document import Document
 #my_api_key = "AIzaSyACpSZ6gtDOKFadgM651TNu7DdzvtStX6Y"
 #my_cse_id = "d4451a0622ff94fc7"
 
@@ -106,7 +107,8 @@ def google_search(text, result_len=10,llm: BaseAnswer = None):
             "link": result["link"],
         }
 
-        content = get_text(result["link"], result["displayLink"])
+        #content = get_text(result["link"], result["displayLink"])
+        content = None
         if content:
             try:
                 print("调用llm模型获取摘要数据---------")
