@@ -16,7 +16,7 @@ from models.base import (BaseAnswer,
 from models.loader.args import parser
 from models.loader import LoaderCheckPoint
 import models.shared as shared
-from agent import google_search, bing_search
+from agent import  bing_search
 from langchain.docstore.document import Document
 from functools import lru_cache
 from textsplitter.zh_title_enhance import zh_title_enhance
@@ -358,13 +358,13 @@ class LocalDocQA:
                 result_docs.extend(related_docs_with_score)
 
         # 谷歌搜索
-        # if knowledge_ratio<1:
-        #     g_num = self.top_k-k_num
-        #     search_results = google_search(query,g_num,self.llm)
-        #     search_docs = search_result2docs(search_results)
-        #
-        #     if search_docs and len(search_docs)>0:
-        #         result_docs.extend(search_docs)
+        if knowledge_ratio<1:
+            g_num = self.top_k-k_num
+            search_results = bing_search(query,g_num)
+            search_docs = search_result2docs(search_results)
+
+            if search_docs and len(search_docs)>0:
+                result_docs.extend(search_docs)
         if streaming:
             response = {"query": query,
                         "result": "",
@@ -384,7 +384,7 @@ class LocalDocQA:
             yield response, history
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query,self.top_k,self.llm)
+        results = bing_search(query,self.top_k)
         result_docs = search_result2docs(results)
         if streaming:
             response = {"query": query,
