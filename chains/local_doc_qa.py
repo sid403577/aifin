@@ -360,7 +360,7 @@ class LocalDocQA:
         # 谷歌搜索
         if knowledge_ratio<1:
             g_num = self.top_k-k_num
-            search_results = google_search(query,g_num)
+            search_results = google_search(query,g_num,self.llm)
             search_docs = search_result2docs(search_results)
 
             if search_docs and len(search_docs)>0:
@@ -384,7 +384,7 @@ class LocalDocQA:
             yield response, history
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query,self.top_k)
+        results = google_search(query,self.top_k,self.llm)
         result_docs = search_result2docs(results)
         if streaming:
             response = {"query": query,
@@ -405,7 +405,7 @@ class LocalDocQA:
             yield response, history
 
     def get_search_result_google_answer_new(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query,self.top_k)
+        results = google_search(query,self.top_k,self.llm)
         result_docs = search_result2docs(results)
         response = {"query": query,
                     "flag": 1,
