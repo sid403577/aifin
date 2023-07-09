@@ -531,8 +531,7 @@ async def chat_llm(websocket: WebSocket):
 
         if type == 4:
             for result, history in local_doc_qa.get_knowledge_based_answer(
-                    query=question, vs_path="LangChainCollection", chat_history=history, streaming=True,
-                    knowledge_ratio=0.5):
+                    query=question, vs_path="LangChainCollection", chat_history=history, streaming=True):
                 if "" != result["result"]:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
                 source_documents = [
