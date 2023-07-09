@@ -11,7 +11,7 @@ import chardet
 import requests
 from bs4 import BeautifulSoup
 
-normalUrl = "https://api.crawlbase.com/?token=gRg5wZGhA4tZby6Ihq_6IQ"
+normalUrl = "https://api.crawlbase.com/?token=mjBM5V0p5xIDxV1N9MqYpg"
 
 htmlcontent={
     "search-api-web.eastmoney.com":{

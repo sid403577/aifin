@@ -110,16 +110,23 @@ def google_search(text, result_len=10,llm: BaseAnswer = None):
         content = get_text(result["link"], result["displayLink"])
         if content:
             try:
-                # print("调用llm模型获取摘要数据---------")
-                # prompt = PROMPT_TEMPLATE.replace("{question}", text).replace("{context}", content)
-                # answer_result = llm.generatorAnswer(prompt=prompt, history=[],streaming=False)
-                # resp = answer_result.llm_output["answer"]
-                # metadata_result["snippet"] = resp
-                # print("内容数据设置完成---------")
-                if len(content)>400:
-                    metadata_result["snippet"] = content[:400]
+                print("调用llm模型获取摘要数据---------")
+                PROMPT_TEMPLATE1 = """已知信息：
+                {context} 
+
+                根据上述已知信息，作出摘要信息，控制在400字左右 问题是：{question}"""
+                if len(content)>4000:
+                    content = content[:4000]
+                prompt = PROMPT_TEMPLATE1.replace("{question}", text).replace("{context}", content)
+                answer_result = llm.generatorAnswer(prompt=prompt, history=[],streaming=False)
+                resp = answer_result.llm_output["answer"]
+                metadata_result["snippet"] = resp
+                print("内容数据设置完成---------")
+
             except:
                 print("error：google搜索内容调用大模型异常，")
+                if len(content)>400:
+                    content = content[:400]
                 metadata_result["snippet"] = content
 
         elif "snippet" in result:

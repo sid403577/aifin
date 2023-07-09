@@ -1,25 +1,24 @@
-from os import path
-
-from langchain.embeddings.huggingface import HuggingFaceEmbeddings
-from vectorstores import MyFAISS, MyMilvus
-from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
-from configs.model_config import *
 import datetime
-from textsplitter import ChineseTextSplitter
-from typing import List
-from utils import torch_gc
-from tqdm import tqdm
-from pypinyin import lazy_pinyin
-from loader import UnstructuredPaddleImageLoader, UnstructuredPaddlePDFLoader
-from models.base import (BaseAnswer,
-                         AnswerResult)
-from models.loader.args import parser
-from models.loader import LoaderCheckPoint
-import models.shared as shared
-from agent import  bing_search
-from langchain.docstore.document import Document
 from functools import lru_cache
+from typing import List
+
+from langchain.docstore.document import Document
+from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
+from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from pypinyin import lazy_pinyin
+from tqdm import tqdm
+
+import models.shared as shared
+from agent import google_search, bing_search
+from configs.model_config import *
+from loader import UnstructuredPaddleImageLoader, UnstructuredPaddlePDFLoader
+from models.base import (BaseAnswer)
+from models.loader import LoaderCheckPoint
+from models.loader.args import parser
+from textsplitter import ChineseTextSplitter
 from textsplitter.zh_title_enhance import zh_title_enhance
+from utils import torch_gc
+from vectorstores import MyFAISS, MyMilvus
 
 
 # patch HuggingFaceEmbeddings to make it hashable
@@ -29,6 +28,7 @@ def _embeddings_hash(self):
 
 HuggingFaceEmbeddings.__hash__ = _embeddings_hash
 
+
 def has_vector_store(vs_path) -> bool:
     if MILVUS_HOST:
         directories = vs_path.split("/")
@@ -36,6 +36,7 @@ def has_vector_store(vs_path) -> bool:
             vs_path = directories[-2]
         return MyMilvus.has_collection(vs_path)
     return vs_path is not None and os.path.exists(vs_path) and "index.faiss" in os.listdir(vs_path)
+
 
 # will keep CACHED_VS_NUM of vector store caches
 @lru_cache(CACHED_VS_NUM)
@@ -334,19 +335,18 @@ class LocalDocQA:
                         "source_documents": result_docs}
             yield response, history
 
-
-
-    def get_knowledge_union_google_search_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING,knowledge_ratio:float = 0.5):
+    def get_knowledge_union_google_search_based_answer(self, query, vs_path, chat_history=[],
+                                                       streaming: bool = STREAMING, knowledge_ratio: float = 0.5):
         """
             描述：获取知识库和google搜索的内容集合
             knowledge_ratio：知识库占比（0-1）
         """
         k_num = 0
-        result_docs:list = []
+        result_docs: list = []
 
-        #知识库搜索
-        if knowledge_ratio>0:
-            k_num = int(self.top_k*knowledge_ratio)
+        # 知识库搜索
+        if knowledge_ratio > 0:
+            k_num = int(self.top_k * knowledge_ratio)
             vector_store = load_vector_store(vs_path, self.embeddings)
             vector_store.chunk_size = self.chunk_size
             vector_store.chunk_conent = self.chunk_conent
@@ -358,12 +358,12 @@ class LocalDocQA:
                 result_docs.extend(related_docs_with_score)
 
         # 谷歌搜索
-        if knowledge_ratio<1:
-            g_num = self.top_k-k_num
-            search_results = bing_search(query,g_num)
+        if knowledge_ratio < 1:
+            g_num = self.top_k - k_num
+            search_results = google_search(query, g_num, self.llm)
             search_docs = search_result2docs(search_results)
 
-            if search_docs and len(search_docs)>0:
+            if search_docs and len(search_docs) > 0:
                 result_docs.extend(search_docs)
         if streaming:
             response = {"query": query,
@@ -384,7 +384,7 @@ class LocalDocQA:
             yield response, history
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = bing_search(query,self.top_k)
+        results = google_search(query, self.top_k, self.llm)
         result_docs = search_result2docs(results)
         if streaming:
             response = {"query": query,
@@ -405,7 +405,7 @@ class LocalDocQA:
             yield response, history
 
     def get_search_result_google_answer_new(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = bing_search(query,self.top_k)
+        results = google_search(query, self.top_k, self.llm)
         result_docs = search_result2docs(results)
         response = {"query": query,
                     "flag": 1,
@@ -426,8 +426,6 @@ class LocalDocQA:
                         "flag": 0}
             yield response, history
 
-
-
     def delete_file_from_vector_store(self,
                                       filepath: str or List[str],
                                       vs_path):
@@ -438,7 +436,7 @@ class LocalDocQA:
     def update_file_from_vector_store(self,
                                       filepath: str or List[str],
                                       vs_path,
-                                      docs: List[Document],):
+                                      docs: List[Document], ):
         vector_store = load_vector_store(vs_path, self.embeddings)
         status = vector_store.update_doc(filepath, docs)
         return status
@@ -452,7 +450,6 @@ class LocalDocQA:
             return docs
         else:
             return [os.path.split(doc)[-1] for doc in docs]
-
 
 
 if __name__ == "__main__":
