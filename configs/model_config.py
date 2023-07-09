@@ -192,7 +192,7 @@ BING_SEARCH_URL = "https://api.bing.microsoft.com/v7.0/search"
 
 # 此外，如果是在服务器上，报Failed to establish a new connection: [Errno 110] Connection timed out
 # 是因为服务器加了防火墙，需要联系管理员加白名单，如果公司的服务器的话，就别想了GG
-BING_SUBSCRIPTION_KEY = ""
+BING_SUBSCRIPTION_KEY = "b5904d50bfd345ec8b8f6e9fe4bb75e6"
 
 GOOGLE_API_KEY = "AIzaSyACpSZ6gtDOKFadgM651TNu7DdzvtStX6Y"
 

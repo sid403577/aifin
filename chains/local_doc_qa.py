@@ -405,7 +405,7 @@ class LocalDocQA:
             yield response, history
 
     def get_search_result_google_answer_new(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query,self.top_k,self.llm)
+        results = bing_search(query,self.top_k)
         result_docs = search_result2docs(results)
         response = {"query": query,
                     "flag": 1,
