@@ -128,18 +128,20 @@ def google_search(text, result_len=10,llm: BaseAnswer = None):
 
 
 def get_text(link: str, displayLink: str):
-    print("开始获取html内容")
     try:
         if displayLink in htmlcontent:
             params = htmlcontent[displayLink]
             if 'enable' in params and params['enable']:
+                print("开始获取html内容")
                 text = download_page(url=link)
                 if text:
                     soup = BeautifulSoup(text)
-                    return soup.find_all(params['element'], params['attr'])[0].get_text()
+                    txt = soup.find_all(params['element'], params['attr'])[0].get_text()
+                    print("获取html内容完成")
+                    return txt
     except:
         print(f"error:调用get_text获取内容异常，link：{link}")
-    print("获取html内容结束")
+
 
 
 def download_page(url, para=None):
