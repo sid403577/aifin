@@ -289,5 +289,6 @@ if __name__ == "__main__":
     code = sys.argv[2]  # 股票代码
     type = sys.argv[3]  # 增量1，全量2
     startPage = sys.argv[4]  # 从第几页
+    print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
     eastmoney(domain,code, type, int(startPage))
     # output_csv(result)
