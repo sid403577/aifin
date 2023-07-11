@@ -404,28 +404,6 @@ class LocalDocQA:
                         "source_documents": result_docs}
             yield response, history
 
-    def get_search_result_google_answer_new(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query, self.top_k, self.llm)
-        result_docs = search_result2docs(results)
-        response = {"query": query,
-                    "flag": 1,
-                    "source_documents": result_docs
-                    }
-        yield response, chat_history
-
-        prompt = generate_prompt(result_docs, query)
-
-        for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
-                                                      streaming=streaming):
-            resp = answer_result.llm_output["answer"]
-            history = answer_result.history
-            history[-1][0] = query
-            response = {"query": query,
-                        "result": resp,
-                        "source_documents": result_docs,
-                        "flag": 0}
-            yield response, history
-
     def delete_file_from_vector_store(self,
                                       filepath: str or List[str],
                                       vs_path):
