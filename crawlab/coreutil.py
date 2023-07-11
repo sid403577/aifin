@@ -70,7 +70,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
     pageSize = 10
     flag = True
     count = 0;
-    while flag and count < 3:
+    while flag and count < 5:
         print(f"开始获取第{pageIndex}页数据")
         domainurl: str = param_content['domainurl']
         domainurl = domainurl.replace("$code", code).replace("$pageIndex", str(pageIndex)).replace("$pageSize",
@@ -110,7 +110,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                 if type == "1":
                     s_date = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').date()
                     Yesterday = datetime.date.today() - datetime.timedelta(days=1)
-                    if s_date == Yesterday:
+                    if s_date < Yesterday:
                         print(f"昨天的数据已经处理完成，跳出循环")
                         flag = False
                         break
