@@ -141,12 +141,12 @@ LLM_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mp
 # 知识库默认存储路径
 KB_ROOT_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "knowledge_base")
 
-CONDENSE_QUESTION_PROMPT = """Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question, in its original language.
+CONDENSE_QUESTION_PROMPT = """根据以下聊天记录和后续问题，请使用中文将后续问题改写为一个独立的问题。
 
-Chat History:
+聊天记录：
 {chat_history}
-Follow Up Input: {question}
-Standalone question:"""
+后续问题：{question}
+独立问题："""
 
 # 基于上下文的prompt模版，请务必保留"{question}"和"{context}"
 PROMPT_TEMPLATE = """已知信息：
