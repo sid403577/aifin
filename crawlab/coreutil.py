@@ -213,15 +213,19 @@ def store(docs: list[Document]):
 
     embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
                                        model_kwargs={'device': EMBEDDING_DEVICE})
-    vector_db = Milvus.from_documents(
-        docs,
-        embeddings,
-        connection_args={"host": "8.217.52.63", "port": "19530"},
-    )
-    docs = vector_db.similarity_search("蒋同学高考")
-    if docs and len(docs) > 0:
-        content = [doc.page_content for doc in docs]
-        print(content)
+    count = 0
+    while True and count<3:
+        try:
+            Milvus.from_documents(
+                docs,
+                embeddings,
+                connection_args={"host": "8.217.52.63", "port": "19530"},
+            )
+            break
+        except:
+            print("error,写入矢量库异常")
+            count+=1
+
     print("over")
 
 
