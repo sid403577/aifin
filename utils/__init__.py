@@ -1,4 +1,6 @@
 import torch
+from urllib.parse import urlparse
+
 
 def torch_gc():
     if torch.cuda.is_available():
@@ -11,4 +13,12 @@ def torch_gc():
             empty_cache()
         except Exception as e:
             print(e)
-            print("如果您使用的是 macOS 建议将 pytorch 版本升级至 2.0.0 或更高版本，以支持及时清理 torch 产生的内存占用。")
+            print(
+                "如果您使用的是 macOS 建议将 pytorch 版本升级至 2.0.0 或更高版本，以支持及时清理 torch 产生的内存占用。")
+
+
+def get_root_domain(url: str):
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc
+    root_domain = '.'.join(domain.split('.')[-3:])
+    return root_domain

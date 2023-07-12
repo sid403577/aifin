@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing_extensions import Annotated
 from starlette.responses import RedirectResponse
+from utils import get_root_domain
 
 from chains.local_doc_qa import LocalDocQA
 from configs.model_config import (KB_ROOT_PATH, EMBEDDING_DEVICE,
@@ -385,8 +386,8 @@ async def google_search_chat(
     ):
         pass
     source_documents = [
-        f"""出处 [{inum + 1}] [{doc.metadata["source"]}]({doc.metadata["source"]}) \n\n{doc.page_content}\n\n"""
-        for inum, doc in enumerate(resp["source_documents"])
+        # f"""出处 [{inum + 1}] [{doc.metadata["source"]}]({doc.metadata["source"]}) \n\n{doc.page_content}\n\n"""
+        # for inum, doc in enumerate(resp["source_documents"])
     ]
 
     return ChatMessage(
@@ -427,59 +428,36 @@ def chat(
 
 
 async def chat_llm(websocket: WebSocket):
-    from urllib.parse import urlparse
-    def get_root_domain(url):
-        parsed_url = urlparse(url)
-        domain = parsed_url.netloc
-        root_domain = '.'.join(domain.split('.')[-3:])
-        return root_domain
-
     await websocket.accept()
     turn = 1
     while True:
         input_json = await websocket.receive_text()
         json_data = json.loads(input_json)
-        question, history ,type = json_data["question"], json_data["history"] ,json_data["type"]
+        question, history, tp = json_data["question"], json_data["history"], json_data["type"]
         await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
-        if type is None:
-            for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
-                resp = answer_result.llm_output["answer"]
-                history = answer_result.history
-                chat_message = ChatMessage(
-                    question=question,
-                    response=resp,
-                    history=history,
-                    source_documents=[],
-                )
-                await websocket.send_text(
-                    json.dumps(
-                        chat_message,
-                        cls=ChatMessageEncoder,
-                        ensure_ascii=False,
-                    )
-                )
 
-        if type ==2:
+        source_documents = None
+        if tp == 2:
             for result, history in local_doc_qa.get_search_result_google_answer(query=question,
-                                                                                    chat_history=history,
-                                                                                    streaming=True):
-                if ""!= result["result"]:
+                                                                                chat_history=history,
+                                                                                streaming=True):
+                if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                source_documents = [
-                    json.dumps(
-                        {
-                            "num": inum + 1,
-                            "title": doc.metadata.get("title"),
-                            "url": doc.metadata.get("url"),
-                            "rootUrl": get_root_domain(doc.metadata.get("url")),
-                            "content": doc.page_content,
-                            "date": doc.metadata.get("date"),
-                            "score": doc.metadata.get("score"),
-                            "source": doc.metadata.get("source"),
-                        }
-                    )
-                    for inum, doc in enumerate(result["source_documents"])
-                ]
+                    source_documents = [
+                        json.dumps(
+                            {
+                                "num": inum + 1,
+                                "title": doc.metadata.get("title"),
+                                "url": doc.metadata.get("url"),
+                                "rootUrl": get_root_domain(doc.metadata.get("url")),
+                                "content": doc.page_content,
+                                "date": doc.metadata.get("date"),
+                                "score": doc.metadata.get("score"),
+                                "source": doc.metadata.get("source"),
+                            }
+                        )
+                        for inum, doc in enumerate(result["source_documents"])
+                    ]
                 chat_message = ChatMessage(
                     question=question,
                     response=result["result"],
@@ -494,27 +472,27 @@ async def chat_llm(websocket: WebSocket):
                     )
                 )
 
-        if type == 3:
+        elif tp == 3:
             for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
                     query=question, vs_path="LangChainCollection", chat_history=history, streaming=True,
                     knowledge_ratio=0.5):
-                if "" != result["result"]:
+                if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                source_documents = [
-                    json.dumps(
-                        {
-                            "num": inum + 1,
-                            "title": doc.metadata.get("title"),
-                            "url": doc.metadata.get("url"),
-                            "rootUrl": get_root_domain(doc.metadata.get("url")),
-                            "content": doc.page_content,
-                            "date": doc.metadata.get("date"),
-                            "score": doc.metadata.get("score"),
-                            "source": doc.metadata.get("source"),
-                        }
-                    )
-                    for inum, doc in enumerate(result["source_documents"])
-                ]
+                    source_documents = [
+                        json.dumps(
+                            {
+                                "num": inum + 1,
+                                "title": doc.metadata.get("title"),
+                                "url": doc.metadata.get("url"),
+                                "rootUrl": get_root_domain(doc.metadata.get("url")),
+                                "content": doc.page_content,
+                                "date": doc.metadata.get("date"),
+                                "score": doc.metadata.get("score"),
+                                "source": doc.metadata.get("source"),
+                            }
+                        )
+                        for inum, doc in enumerate(result["source_documents"])
+                    ]
                 chat_message = ChatMessage(
                     question=question,
                     response=result["result"],
@@ -529,26 +507,26 @@ async def chat_llm(websocket: WebSocket):
                     )
                 )
 
-        if type == 4:
+        elif tp == 4:
             for result, history in local_doc_qa.get_knowledge_based_answer(
                     query=question, vs_path="LangChainCollection", chat_history=history, streaming=True):
-                if "" != result["result"]:
+                if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                source_documents = [
-                    json.dumps(
-                        {
-                            "num": inum + 1,
-                            "title": doc.metadata.get("title"),
-                            "url": doc.metadata.get("url"),
-                            "rootUrl": get_root_domain(doc.metadata.get("url")),
-                            "content": doc.page_content,
-                            "date": doc.metadata.get("date"),
-                            "score": doc.metadata.get("score"),
-                            "source": doc.metadata.get("source"),
-                        }
-                    )
-                    for inum, doc in enumerate(result["source_documents"])
-                ]
+                    source_documents = [
+                        json.dumps(
+                            {
+                                "num": inum + 1,
+                                "title": doc.metadata.get("title"),
+                                "url": doc.metadata.get("url"),
+                                "rootUrl": get_root_domain(doc.metadata.get("url")),
+                                "content": doc.page_content,
+                                "date": doc.metadata.get("date"),
+                                "score": doc.metadata.get("score"),
+                                "source": doc.metadata.get("source"),
+                            }
+                        )
+                        for inum, doc in enumerate(result["source_documents"])
+                    ]
                 chat_message = ChatMessage(
                     question=question,
                     response=result["result"],
@@ -686,5 +664,7 @@ if __name__ == "__main__":
     args = None
     args = parser.parse_args()
     args_dict = vars(args)
+
+
     shared.loaderCheckPoint = LoaderCheckPoint(args_dict)
     api_start(args.host, args.port)

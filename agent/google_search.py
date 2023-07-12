@@ -1,3 +1,4 @@
+import json
 import urllib.parse
 from typing import List, Dict
 import asyncio
@@ -9,8 +10,9 @@ from models.base import BaseAnswer
 from configs.model_config import GOOGLE_API_KEY, GOOGLE_CSE_ID, PROMPT_TEMPLATE, SENTENCE_SIZE
 from textsplitter import ChineseTextSplitter
 from langchain.docstore.document import Document
-#my_api_key = "AIzaSyACpSZ6gtDOKFadgM651TNu7DdzvtStX6Y"
-#my_cse_id = "d4451a0622ff94fc7"
+
+# my_api_key = "AIzaSyACpSZ6gtDOKFadgM651TNu7DdzvtStX6Y"
+# my_cse_id = "d4451a0622ff94fc7"
 
 htmlcontent = {
     "www.prnasia.com": {
@@ -94,32 +96,21 @@ def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
     return res['items']
 
 
-def google_search(text, result_len=10, llm: BaseAnswer = None):
+def google_search(text, result_len=10):
     print("google_search开始")
     results = _google_search(text, GOOGLE_API_KEY, GOOGLE_CSE_ID, num=result_len)
     print(f"results:{results}")
     metadata_results = []
-    if len(results) == 0:
-        return [{"Result": "No good Google Search Result was found"}]
     for result in results:
-        metadata_result = {
-            "title": result["title"],
-            "link": result["link"],
-        }
-
-        content = get_text(result["link"], result["displayLink"], llm)
-        if content:
-            metadata_result["snippet"] = content
-        elif "snippet" in result:
-            metadata_result["snippet"] = result["snippet"]
+        metadata_result = {"title": result["title"], "link": result["link"], "snippet": result["snippet"],
+                           "content": get_text(result["link"], result["displayLink"])}
         metadata_results.append(metadata_result)
 
-    # await asyncio.gather(\*tasks)
     print("google_search结束")
     return metadata_results
 
 
-def get_text(link: str, displayLink: str, llm: BaseAnswer = None):
+def get_text(link: str, displayLink: str):
     try:
         if displayLink in htmlcontent:
             params = htmlcontent[displayLink]
@@ -130,23 +121,9 @@ def get_text(link: str, displayLink: str, llm: BaseAnswer = None):
                     soup = BeautifulSoup(text)
                     txt = soup.find_all(params['element'], params['attr'])[0].get_text()
                     print("获取html内容完成")
-
-                    if llm:
-                        print("开始获取摘要")
-                        from langchain.chains.summarize import load_summarize_chain
-                        from langchain.text_splitter import RecursiveCharacterTextSplitter
-                        from langchain.docstore.document import Document
-
-                        text_splitter = RecursiveCharacterTextSplitter(chunk_size=2*1000, chunk_overlap=200)
-                        texts = text_splitter.split_text(txt)
-                        docs = [Document(page_content=t) for t in texts]
-                        txt = load_summarize_chain(llm, chain_type="map_reduce", verbose=True).run(docs)
-                        print("获取摘要完成")
-                        return txt
                     return txt
     except Exception as e:
         print(f"error:调用get_text获取内容异常，link：{link}, error: {e}")
-
 
 
 def download_page(url, para=None):
@@ -176,13 +153,5 @@ def download_page(url, para=None):
 
 
 if __name__ == '__main__':
-    import os
-    from langchain.llms import OpenAI
-
-    os.environ["OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc"
-    os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
-    os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
-    llm = OpenAI()
-
-    text = google_search("宁德时代", llm=llm)
+    text = google_search("宁德时代")
     print(text)

@@ -1,10 +1,13 @@
 import datetime
+import time
+import shutil
 from functools import lru_cache
 from typing import List
 
 from langchain.docstore.document import Document
 from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pypinyin import lazy_pinyin
 from tqdm import tqdm
 
@@ -19,6 +22,7 @@ from textsplitter import ChineseTextSplitter
 from textsplitter.zh_title_enhance import zh_title_enhance
 from utils import torch_gc
 from vectorstores import MyFAISS, MyMilvus
+from langchain.vectorstores.base import VectorStore
 
 
 # patch HuggingFaceEmbeddings to make it hashable
@@ -49,7 +53,7 @@ def load_vector_store(vs_path, embeddings):
     return MyFAISS.load_local(vs_path, embeddings)
 
 
-def add_vector_store(vs_path, embeddings, docs) -> List[str]:
+def add_vector_store(vs_path, embeddings, docs):
     if MILVUS_HOST:
         directories = vs_path.split("/")
         if len(directories) > 1:
@@ -67,6 +71,20 @@ def add_vector_store(vs_path, embeddings, docs) -> List[str]:
     torch_gc()
     vector_store.save_local(vs_path)
     return vector_store
+
+
+def temp_vector_store(vs_path, embeddings):
+    temp_vs_path = os.path.join(KB_ROOT_PATH, vs_path, "vector_store")
+    os.makedirs(temp_vs_path)
+    if os.path.isdir(vs_path) and "index.faiss" in os.listdir(vs_path):
+        return MyFAISS.load_local(temp_vs_path, embeddings)
+    docs = [Document(page_content="test", metadata={"source": "test"})]
+    return MyFAISS.from_documents(docs, embeddings)
+
+
+def temp_vector_store_rm(vs_path):
+    temp_vs_path = os.path.join(KB_ROOT_PATH, vs_path)
+    shutil.rmtree(temp_vs_path)
 
 
 def tree(filepath, ignore_dir_names=None, ignore_file_names=None):
@@ -143,14 +161,29 @@ def generate_prompt(related_docs: List[str],
     return prompt
 
 
-def search_result2docs(search_results):
+def search_result2docs(search_results, vectorstore: VectorStore = None):
     docs = []
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
     for result in search_results:
         doc = Document(page_content=result["snippet"] if "snippet" in result.keys() else "",
                        metadata={"url": result["link"] if "link" in result.keys() else "",
                                  "title": result["title"] if "title" in result.keys() else "",
                                  "source": 'online',
                                  })
+        content = None
+        if "content" in result.keys():
+            content = result["content"]
+            if content:
+                if len(content) > 200:
+                    result["snippet"] = content[:200]
+                else:
+                    result["snippet"] = content
+
+        if vectorstore:
+            if content is None:
+                content = doc.page_content
+            texts = text_splitter.split_text(content)
+            vectorstore.add_texts(texts, [doc.metadata] * len(texts))
         docs.append(doc)
     return docs
 
@@ -260,7 +293,25 @@ class LocalDocQA:
             logger.error(e)
             return None
 
+    def question_generator(self, query, chat_history=[], prompt_template=CONDENSE_QUESTION_PROMPT):
+        if chat_history:
+            buffer = ""
+            for i, (old_query, response) in enumerate(chat_history):
+                if old_query is None:
+                    continue
+                human = "Human: " + old_query
+                ai = "Assistant: " + response
+                buffer += "\n" + "\n".join([human, ai])
+            prompt = prompt_template.replace("{question}", query).replace("{chat_history}", buffer)
+            for answer_result in self.llm.generatorAnswer(prompt):
+                pass
+            resp = answer_result.llm_output["answer"]
+            print(f"question {query}  =====> {resp}")
+            return resp
+        return query
+
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
+        query = self.question_generator(query, chat_history)
         vector_store = load_vector_store(vs_path, self.embeddings)
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
@@ -315,6 +366,7 @@ class LocalDocQA:
         return response, prompt
 
     def get_search_result_based_answer(self, query, chat_history=[], streaming: bool = STREAMING):
+        query = self.question_generator(query, chat_history)
         results = bing_search(query)
         result_docs = search_result2docs(results)
         if streaming:
@@ -341,38 +393,47 @@ class LocalDocQA:
             描述：获取知识库和google搜索的内容集合
             knowledge_ratio：知识库占比（0-1）
         """
-        k_num = 0
-        result_docs: list = []
+        query = self.question_generator(query, chat_history)
+
+        s = time.perf_counter()
+        results = google_search(query, self.top_k)
+        elapsed = time.perf_counter() - s
+        print(f"google search 向量化开始 {elapsed:0.2f} seconds")
+        # 谷歌搜索
+        tmp_vs_path = str(uuid.uuid4())
+        vector_store = temp_vector_store(tmp_vs_path, self.embeddings)
+        vector_store.chunk_size = self.chunk_size
+        vector_store.chunk_conent = self.chunk_conent
+        vector_store.score_threshold = self.score_threshold
+        result_docs = search_result2docs(results, vector_store)
+        elapsed = time.perf_counter() - s
+        print(f"google search 向量化结束 {elapsed:0.2f} seconds")
 
         # 知识库搜索
-        if knowledge_ratio > 0:
-            k_num = int(self.top_k * knowledge_ratio)
-            vector_store = load_vector_store(vs_path, self.embeddings)
-            vector_store.chunk_size = self.chunk_size
-            vector_store.chunk_conent = self.chunk_conent
-            vector_store.score_threshold = self.score_threshold
-            related_docs_with_score = vector_store.similarity_search_with_score(query, k=k_num)
+        vector_store2 = load_vector_store(vs_path, self.embeddings)
+        vector_store2.chunk_size = self.chunk_size
+        vector_store2.chunk_conent = self.chunk_conent
+        vector_store2.score_threshold = self.score_threshold
+        related_docs_with_score = vector_store2.similarity_search_with_score(query, self.top_k)
+        docs = [doc for doc in related_docs_with_score]
+        vector_store.add_documents(docs)
+        elapsed = time.perf_counter() - s
+        print(f"知识库向量化 {elapsed:0.2f} seconds")
 
-            torch_gc()
-            if related_docs_with_score and len(related_docs_with_score) > 0:
-                result_docs.extend(related_docs_with_score)
+        result_docs = vector_store.similarity_search_with_score(query, self.top_k)
+        temp_vector_store_rm(tmp_vs_path)
+        torch_gc()
+        elapsed = time.perf_counter() - s
+        print(f"向量化搜索结束 {elapsed:0.2f} seconds")
 
-        # 谷歌搜索
-        if knowledge_ratio < 1:
-            g_num = self.top_k - k_num
-            search_results = google_search(query, g_num, self.llm)
-            search_docs = search_result2docs(search_results)
-
-            if search_docs and len(search_docs) > 0:
-                result_docs.extend(search_docs)
         if streaming:
             response = {"query": query,
                         "result": "",
                         "source_documents": result_docs
                         }
             yield response, chat_history
-        prompt = generate_prompt(result_docs, query)
 
+        prompt = generate_prompt(result_docs, query)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
             resp = answer_result.llm_output["answer"]
@@ -382,18 +443,36 @@ class LocalDocQA:
                         "result": resp,
                         "source_documents": result_docs}
             yield response, history
+        elapsed = time.perf_counter() - s
+        print(f"AI结束 {elapsed:0.2f} seconds")
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        results = google_search(query, self.top_k, self.llm)
-        result_docs = search_result2docs(results)
+        query = self.question_generator(query, chat_history)
+        s = time.perf_counter()
+        results = google_search(query, self.top_k)
+        elapsed = time.perf_counter() - s
+        print(f"google search 向量化开始 {elapsed:0.2f} seconds")
+        tmp_vs_path = str(uuid.uuid4())
+        vector_store = temp_vector_store(tmp_vs_path, self.embeddings)
+        vector_store.chunk_size = self.chunk_size
+        vector_store.chunk_conent = self.chunk_conent
+        vector_store.score_threshold = self.score_threshold
+        result_docs = search_result2docs(results, vector_store)
+        elapsed = time.perf_counter() - s
+        print(f"google search 向量化结束 {elapsed:0.2f} seconds")
         if streaming:
             response = {"query": query,
                         "result": "",
                         "source_documents": result_docs
                         }
             yield response, chat_history
-        prompt = generate_prompt(result_docs, query)
+        result_docs = vector_store.similarity_search_with_score(query, self.top_k)
+        temp_vector_store_rm(tmp_vs_path)
+        torch_gc()
+        elapsed = time.perf_counter() - s
+        print(f"google search 向量化搜索结束 {elapsed:0.2f} seconds")
 
+        prompt = generate_prompt(result_docs, query)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
             resp = answer_result.llm_output["answer"]
@@ -403,6 +482,8 @@ class LocalDocQA:
                         "result": resp,
                         "source_documents": result_docs}
             yield response, history
+        elapsed = time.perf_counter() - s
+        print(f"AI结束 {elapsed:0.2f} seconds")
 
     def delete_file_from_vector_store(self,
                                       filepath: str or List[str],
