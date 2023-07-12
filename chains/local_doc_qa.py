@@ -174,8 +174,8 @@ def search_result2docs(search_results, vectorstore: VectorStore = None):
         if "content" in result.keys():
             content = result["content"]
             if content:
-                if len(content) > 200:
-                    result["snippet"] = content[:200]
+                if len(content) > 100:
+                    result["snippet"] = content[:100]
                 else:
                     result["snippet"] = content
 
@@ -405,7 +405,7 @@ class LocalDocQA:
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
         vector_store.score_threshold = self.score_threshold
-        result_docs = search_result2docs(results, vector_store)
+        search_result2docs(results, vector_store)
         elapsed = time.perf_counter() - s
         print(f"google search 向量化结束 {elapsed:0.2f} seconds")
 
@@ -418,13 +418,13 @@ class LocalDocQA:
         docs = [doc for doc in related_docs_with_score]
         vector_store.add_documents(docs)
         elapsed = time.perf_counter() - s
-        print(f"知识库向量化 {elapsed:0.2f} seconds")
+        print(f"知识库向量化 {elapsed:0.2f} seconds {len(docs)}")
 
         result_docs = vector_store.similarity_search_with_score(query, self.top_k)
         temp_vector_store_rm(tmp_vs_path)
         torch_gc()
         elapsed = time.perf_counter() - s
-        print(f"向量化搜索结束 {elapsed:0.2f} seconds")
+        print(f"向量化搜索结束 {elapsed:0.2f} seconds {len(result_docs)}")
 
         if streaming:
             response = {"query": query,
@@ -470,7 +470,7 @@ class LocalDocQA:
         temp_vector_store_rm(tmp_vs_path)
         torch_gc()
         elapsed = time.perf_counter() - s
-        print(f"google search 向量化搜索结束 {elapsed:0.2f} seconds")
+        print(f"google search 向量化搜索结束 {elapsed:0.2f} seconds {len(result_docs)}")
 
         prompt = generate_prompt(result_docs, query)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,

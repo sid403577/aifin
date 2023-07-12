@@ -99,7 +99,7 @@ def _google_search(search_term, api_key, cse_id, **kwargs) -> List[Dict]:
 def google_search(text, result_len=10):
     print("google_search开始")
     results = _google_search(text, GOOGLE_API_KEY, GOOGLE_CSE_ID, num=result_len)
-    print(f"results:{results}")
+    # print(f"results:{results}")
     metadata_results = []
     for result in results:
         metadata_result = {"title": result["title"], "link": result["link"], "snippet": result["snippet"],
