@@ -148,6 +148,17 @@ CONDENSE_QUESTION_PROMPT = """根据以下聊天记录和后续问题，请使�
 后续问题：{question}
 独立问题："""
 
+CONDENSE_QUESTION_PROMPT_KEYWORDS = """根据以下聊天记录和后续问题，首先使用中文将后续问题改写为一个独立的问题, 然后提取该问题的搜索查询关键词。
+格式如下：
+问题：
+关键词：
+
+聊天记录：
+{chat_history}
+后续问题：{question}
+"""
+
+
 # 基于上下文的prompt模版，请务必保留"{question}"和"{context}"
 PROMPT_TEMPLATE = """已知信息：
 {context} 

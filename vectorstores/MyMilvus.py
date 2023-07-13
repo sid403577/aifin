@@ -1,3 +1,5 @@
+import time
+
 import environs
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.vectorstores import Milvus
@@ -14,11 +16,15 @@ class MyMilvus(Milvus, VectorStore):
             embedding_function: Callable,
             collection_name: str = "LangChainCollection"
     ):
+        s = time.perf_counter()
+        print(f"load milvus ...")
         super().__init__(embedding_function=embedding_function,
                          collection_name=collection_name, connection_args={"host": MILVUS_HOST, "port": MILVUS_PORT})
         self.score_threshold = VECTOR_SEARCH_SCORE_THRESHOLD
         self.chunk_size = CHUNK_SIZE
         self.chunk_conent = False
+        elapsed = time.perf_counter() - s
+        print(f"load milvus {elapsed:0.2f} seconds")
 
     def similarity_search_with_score_by_vector(
             self,
