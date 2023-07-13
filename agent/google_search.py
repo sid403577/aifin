@@ -102,7 +102,7 @@ def google_search(text, result_len=10):
     # print(f"results:{results}")
     metadata_results = []
     for result in results:
-        metadata_result = {"title": result["title"], "link": result["link"], "snippet": result["snippet"],
+        metadata_result = {"title": result["title"], "link": result["link"], "snippet": result["snippet"] if "snippet" in result.keys() else "",
                            "content": get_text(result["link"], result["displayLink"])}
         metadata_results.append(metadata_result)
 
