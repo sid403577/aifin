@@ -7,7 +7,6 @@ from typing import List
 from langchain.docstore.document import Document
 from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from pypinyin import lazy_pinyin
 from tqdm import tqdm
 
@@ -163,7 +162,7 @@ def generate_prompt(related_docs: List[str],
 
 def search_result2docs(search_results, vectorstore: VectorStore = None):
     docs = []
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
+    text_splitter = ChineseTextSplitter(pdf=False, sentence_size=SENTENCE_SIZE)
     for result in search_results:
         doc = Document(page_content=result["snippet"] if "snippet" in result.keys() else "",
                        metadata={"url": result["link"] if "link" in result.keys() else "",
@@ -293,8 +292,9 @@ class LocalDocQA:
             logger.error(e)
             return None
 
-    def question_generator(self, query, chat_history=[], prompt_template=CONDENSE_QUESTION_PROMPT):
+    def question_generator(self, query, chat_history=[], prompt_template=CONDENSE_QUESTION_PROMPT, history_len=LLM_HISTORY_LEN):
         if chat_history:
+            chat_history = chat_history[-history_len:]
             buffer = ""
             for i, (old_query, response) in enumerate(chat_history):
                 if old_query is None:
