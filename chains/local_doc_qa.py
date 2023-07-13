@@ -19,7 +19,7 @@ from models.loader import LoaderCheckPoint
 from models.loader.args import parser
 from textsplitter import ChineseTextSplitter
 from textsplitter.zh_title_enhance import zh_title_enhance
-from utils import torch_gc
+from utils import torch_gc, join_array_with_index, extract_question_and_keywords
 from vectorstores import MyFAISS, MyMilvus
 from langchain.vectorstores.base import VectorStore
 
@@ -155,7 +155,9 @@ def write_check_file(filepath, docs):
 def generate_prompt(related_docs: List[str],
                     query: str,
                     prompt_template: str = PROMPT_TEMPLATE, ) -> str:
-    context = "\n".join([doc.page_content for doc in related_docs])
+
+    # context = "\n".join([doc.page_content for doc in related_docs])
+    context = join_array_with_index([doc.page_content for doc in related_docs])
     prompt = prompt_template.replace("{question}", query).replace("{context}", context)
     return prompt
 
@@ -306,17 +308,28 @@ class LocalDocQA:
             for answer_result in self.llm.generatorAnswer(prompt):
                 pass
             resp = answer_result.llm_output["answer"]
-            print(f"question {query}  =====> {resp}")
+            print(f"question prompt {prompt}")
+            print(f"question answer {query} =====> {resp}")
             return resp
         return query
 
+    def question_generator_keywords(self, query, chat_history=[]):
+        resp = self.question_generator(query, chat_history, prompt_template=CONDENSE_QUESTION_PROMPT_KEYWORDS, history_len=LLM_HISTORY_LEN)
+        question, keywords = extract_question_and_keywords(resp)
+        print(f"extract question:{question} keywords:{keywords}")
+        if keywords:
+            return keywords
+        if question:
+            return question
+        return query
+
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
-        query = self.question_generator(query, chat_history)
+        keywords = self.question_generator_keywords(query, chat_history)
         vector_store = load_vector_store(vs_path, self.embeddings)
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
         vector_store.score_threshold = self.score_threshold
-        related_docs_with_score = vector_store.similarity_search_with_score(query, k=self.top_k)
+        related_docs_with_score = vector_store.similarity_search_with_score(keywords, k=self.top_k)
         torch_gc()
         if streaming:
             response = {"query": query,
@@ -366,8 +379,8 @@ class LocalDocQA:
         return response, prompt
 
     def get_search_result_based_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        query = self.question_generator(query, chat_history)
-        results = bing_search(query)
+        keywords = self.question_generator_keywords(query, chat_history)
+        results = bing_search(keywords)
         result_docs = search_result2docs(results)
         if streaming:
             response = {"query": query,
@@ -393,10 +406,9 @@ class LocalDocQA:
             描述：获取知识库和google搜索的内容集合
             knowledge_ratio：知识库占比（0-1）
         """
-        query = self.question_generator(query, chat_history)
-
+        keywords = self.question_generator_keywords(query, chat_history)
         s = time.perf_counter()
-        results = google_search(query, self.top_k)
+        results = google_search(keywords, self.top_k)
         elapsed = time.perf_counter() - s
         print(f"google search 向量化开始 {elapsed:0.2f} seconds")
         # 谷歌搜索
@@ -414,11 +426,12 @@ class LocalDocQA:
         vector_store2.chunk_size = self.chunk_size
         vector_store2.chunk_conent = self.chunk_conent
         vector_store2.score_threshold = self.score_threshold
-        related_docs_with_score = vector_store2.similarity_search_with_score(query, self.top_k)
+        print(f"知识库向量化搜索 {elapsed:0.2f} seconds")
+        related_docs_with_score = vector_store2.similarity_search_with_score(keywords, self.top_k)
         docs = [doc for doc in related_docs_with_score]
         vector_store.add_documents(docs)
         elapsed = time.perf_counter() - s
-        print(f"知识库向量化 {elapsed:0.2f} seconds {len(docs)}")
+        print(f"知识库向量化搜索追加 {elapsed:0.2f} seconds {len(docs)}")
 
         result_docs = vector_store.similarity_search_with_score(query, self.top_k)
         temp_vector_store_rm(tmp_vs_path)
@@ -447,9 +460,9 @@ class LocalDocQA:
         print(f"AI结束 {elapsed:0.2f} seconds")
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        query = self.question_generator(query, chat_history)
+        keywords = self.question_generator_keywords(query, chat_history)
         s = time.perf_counter()
-        results = google_search(query, self.top_k)
+        results = google_search(keywords, self.top_k)
         elapsed = time.perf_counter() - s
         print(f"google search 向量化开始 {elapsed:0.2f} seconds")
         tmp_vs_path = str(uuid.uuid4())
