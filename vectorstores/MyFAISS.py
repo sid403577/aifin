@@ -53,6 +53,7 @@ class MyFAISS(FAISS, VectorStore):
         id_set = set()
         store_len = len(self.index_to_docstore_id)
         rearrange_id_list = False
+        key = "url"
         for j, i in enumerate(indices[0]):
             if i == -1 or 0 < self.score_threshold < scores[0][j]:
                 # This happens when not enough docs are returned.
@@ -85,11 +86,11 @@ class MyFAISS(FAISS, VectorStore):
                     if l not in id_set and 0 <= l < len(self.index_to_docstore_id):
                         _id0 = self.index_to_docstore_id[l]
                         doc0 = self.docstore.search(_id0)
-                        if docs_len + len(doc0.page_content) > self.chunk_size or doc0.metadata["source"] != \
-                                doc.metadata["source"]:
+                        if docs_len + len(doc0.page_content) > self.chunk_size or doc0.metadata[key] != \
+                                doc.metadata[key]:
                             break_flag = True
                             break
-                        elif doc0.metadata["source"] == doc.metadata["source"]:
+                        elif doc0.metadata[key] == doc.metadata[key]:
                             docs_len += len(doc0.page_content)
                             id_set.add(l)
                             rearrange_id_list = True

@@ -18,6 +18,7 @@ from models.base import (BaseAnswer)
 from models.loader import LoaderCheckPoint
 from models.loader.args import parser
 from textsplitter import ChineseTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from textsplitter.zh_title_enhance import zh_title_enhance
 from utils import torch_gc, join_array_with_index, extract_question_and_keywords
 from vectorstores import MyFAISS, MyMilvus
@@ -164,7 +165,8 @@ def generate_prompt(related_docs: List[str],
 
 def search_result2docs(search_results, vectorstore: VectorStore = None):
     docs = []
-    text_splitter = ChineseTextSplitter(pdf=False, sentence_size=SENTENCE_SIZE)
+    # text_splitter = ChineseTextSplitter(pdf=False, sentence_size=SENTENCE_SIZE)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
     for result in search_results:
         doc = Document(page_content=result["snippet"] if "snippet" in result.keys() else "",
                        metadata={"url": result["link"] if "link" in result.keys() else "",
@@ -180,11 +182,13 @@ def search_result2docs(search_results, vectorstore: VectorStore = None):
                 else:
                     result["snippet"] = content
 
+        if len(result["snippet"]) == 0:
+            continue
+
         if vectorstore:
             if content is None:
                 content = doc.page_content
-            texts = text_splitter.split_text(content)
-            vectorstore.add_texts(texts, [doc.metadata] * len(texts))
+            vectorstore.add_documents(text_splitter.split_documents([Document(page_content=content, metadata=doc.metadata)]))
         docs.append(doc)
     return docs
 
@@ -428,16 +432,18 @@ class LocalDocQA:
         vector_store2.score_threshold = self.score_threshold
         print(f"知识库向量化搜索 {elapsed:0.2f} seconds")
         related_docs_with_score = vector_store2.similarity_search_with_score(keywords, self.top_k)
-        docs = [doc for doc in related_docs_with_score]
+        tdocs = [doc for doc in related_docs_with_score]
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
+        docs = text_splitter.split_documents(tdocs)
         vector_store.add_documents(docs)
         elapsed = time.perf_counter() - s
-        print(f"知识库向量化搜索追加 {elapsed:0.2f} seconds {len(docs)}")
+        print(f"知识库向量化搜索追加 {elapsed:0.2f} seconds len:{len(docs)}")
 
         result_docs = vector_store.similarity_search_with_score(query, self.top_k)
         temp_vector_store_rm(tmp_vs_path)
         torch_gc()
         elapsed = time.perf_counter() - s
-        print(f"向量化搜索结束 {elapsed:0.2f} seconds {len(result_docs)}")
+        print(f"向量化搜索结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
 
         if streaming:
             response = {"query": query,
@@ -479,11 +485,11 @@ class LocalDocQA:
                         "source_documents": result_docs
                         }
             yield response, chat_history
-        result_docs = vector_store.similarity_search_with_score(query, self.top_k)
+        result_docs = vector_store.similarity_search_with_score(keywords, self.top_k)
         temp_vector_store_rm(tmp_vs_path)
         torch_gc()
         elapsed = time.perf_counter() - s
-        print(f"google search 向量化搜索结束 {elapsed:0.2f} seconds {len(result_docs)}")
+        print(f"google search 向量化搜索结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
 
         prompt = generate_prompt(result_docs, query)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
