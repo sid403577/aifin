@@ -305,6 +305,9 @@ class LocalDocQA:
                 for company in COMPANYS:
                     if company in old_query:
                         last_company = company
+            for company in COMPANYS:
+                if company in query:
+                    last_company = company
             if last_company not in query:
                 return last_company + query
             # buffer = ""
