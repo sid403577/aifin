@@ -78,7 +78,7 @@ def temp_vector_store(vs_path, embeddings):
     os.makedirs(temp_vs_path)
     if os.path.isdir(vs_path) and "index.faiss" in os.listdir(vs_path):
         return MyFAISS.load_local(temp_vs_path, embeddings)
-    docs = [Document(page_content="test", metadata={"source": "test"})]
+    docs = [Document(page_content="test", metadata={"source": "test", "url": "test"})]
     return MyFAISS.from_documents(docs, embeddings)
 
 
