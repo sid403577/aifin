@@ -4,7 +4,7 @@ import shutil
 from functools import lru_cache
 from typing import List
 
-from langchain import FewShotPromptTemplate
+from langchain import FewShotPromptTemplate, PromptTemplate
 from langchain.docstore.document import Document
 from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
@@ -177,10 +177,14 @@ def generate_few_shot_prompt(related_docs: List[str],
         # This is the number of examples to produce.
         k=1
     )
+    example_prompt = PromptTemplate(
+        input_variables=["query", "answer"],
+        template=PROMPT_TEMPLATE_EXAMPLE
+    )
     few_shot_prompt_template = FewShotPromptTemplate(
         example_selector=example_selector,
         # examples = examples,
-        example_prompt=PROMPT_TEMPLATE_EXAMPLE,
+        example_prompt=example_prompt,
         prefix=PROMPT_TEMPLATE_EXAMPLE_PREFIX,
         suffix=PROMPT_TEMPLATE_EXAMPLE_SUFFIX,
         input_variables=["question", "context"],
@@ -188,7 +192,7 @@ def generate_few_shot_prompt(related_docs: List[str],
     )
 
     context = "\n".join([doc.page_content for doc in related_docs])
-    prompt = few_shot_prompt_template.format(question=query, context="ddd")
+    prompt = few_shot_prompt_template.format(question=query, context=context)
     print(f"prompt: {prompt}")
     return prompt
 
