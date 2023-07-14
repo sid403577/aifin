@@ -9,6 +9,7 @@ from langchain.docstore.document import Document
 from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from langchain.prompts.example_selector import SemanticSimilarityExampleSelector
+from langchain.vectorstores import Chroma
 from pypinyin import lazy_pinyin
 from tqdm import tqdm
 
@@ -172,7 +173,7 @@ def generate_few_shot_prompt(related_docs: List[str],
         # This is the embedding class used to produce embeddings which are used to measure semantic similarity.
         embeddings,
         # This is the VectorStore class that is used to store the embeddings and do a similarity search over.
-        MyFAISS,
+        Chroma,
         # This is the number of examples to produce.
         k=1
     )
@@ -187,7 +188,7 @@ def generate_few_shot_prompt(related_docs: List[str],
     )
 
     context = "\n".join([doc.page_content for doc in related_docs])
-    prompt = few_shot_prompt_template.format(question=query, context=context)
+    prompt = few_shot_prompt_template.format(question=query, context="ddd")
     print(f"prompt: {prompt}")
     return prompt
 

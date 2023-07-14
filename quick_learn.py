@@ -7,6 +7,7 @@ from langchain.chains import LLMChain
 from langchain import FewShotPromptTemplate
 from langchain.prompts.example_selector import SemanticSimilarityExampleSelector
 from langchain.vectorstores import Chroma
+from langchain.docstore.document import Document
 
 from chains.local_doc_qa import generate_few_shot_prompt
 from configs.model_config import PROMPT_TEMPLATE_EXAMPLES
@@ -136,4 +137,4 @@ def fewShotPrompt():
     # print(result)
 
 if __name__ == "__main__":
-    generate_few_shot_prompt(["sss"], "ddd", OpenAIEmbeddings())
+    generate_few_shot_prompt([Document(page_content="ddd")], "ddd", OpenAIEmbeddings())
