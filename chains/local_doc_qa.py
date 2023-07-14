@@ -187,7 +187,7 @@ def generate_few_shot_prompt(related_docs: List[str],
     )
 
     context = "\n".join([doc.page_content for doc in related_docs])
-    prompt = few_shot_prompt_template.replace("{question}", query).replace("{context}", context)
+    prompt = few_shot_prompt_template.format(question=query, context=context)
     print(f"prompt: {prompt}")
     return prompt
 
