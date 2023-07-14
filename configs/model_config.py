@@ -226,3 +226,5 @@ ZH_TITLE_ENHANCE = False
 MILVUS_HOST = "8.217.52.63"
 
 MILVUS_PORT = "19530"
+
+COMPANYS = ['宁德时代', '贵州茅台', '迈瑞医疗']

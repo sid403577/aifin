@@ -302,20 +302,30 @@ class LocalDocQA:
     def question_generator(self, query, chat_history=[], prompt_template=CONDENSE_QUESTION_PROMPT, history_len=LLM_HISTORY_LEN):
         if chat_history:
             chat_history = chat_history[-history_len:]
-            buffer = ""
+
+            last_company = ""
             for i, (old_query, response) in enumerate(chat_history):
                 if old_query is None:
                     continue
-                human = "Human: " + old_query
-                ai = "Assistant: " + response
-                buffer += "\n" + "\n".join([human, ai])
-            prompt = prompt_template.replace("{question}", query).replace("{chat_history}", buffer)
-            for answer_result in self.llm.generatorAnswer(prompt):
-                pass
-            resp = answer_result.llm_output["answer"]
-            print(f"question prompt {prompt}")
-            print(f"question answer {query} =====> {resp}")
-            return resp
+                for company in COMPANYS:
+                    if company in old_query:
+                        last_company = company
+            if last_company not in query:
+                return last_company + query
+            # buffer = ""
+            # for i, (old_query, response) in enumerate(chat_history):
+            #     if old_query is None:
+            #         continue
+            #     human = "Human: " + old_query
+            #     ai = "Assistant: " + response
+            #     buffer += "\n" + "\n".join([human, ai])
+            # prompt = prompt_template.replace("{question}", query).replace("{chat_history}", buffer)
+            # for answer_result in self.llm.generatorAnswer(prompt):
+            #     pass
+            # resp = answer_result.llm_output["answer"]
+            # print(f"question prompt {prompt}")
+            # print(f"question answer {query} =====> {resp}")
+            # return resp
         return query
 
     def question_generator_keywords(self, query, chat_history=[]):
