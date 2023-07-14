@@ -8,6 +8,7 @@ from langchain import FewShotPromptTemplate
 from langchain.prompts.example_selector import SemanticSimilarityExampleSelector
 from langchain.vectorstores import Chroma
 
+from chains.local_doc_qa import generate_few_shot_prompt
 from configs.model_config import PROMPT_TEMPLATE_EXAMPLES
 
 os.environ["OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc" #当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
@@ -135,4 +136,4 @@ def fewShotPrompt():
     # print(result)
 
 if __name__ == "__main__":
-    fewShotPrompt()
+    generate_few_shot_prompt(["sss"], "ddd", OpenAIEmbeddings())

@@ -177,7 +177,7 @@ PROMPT_TEMPLATE_EXAMPLE_PREFIX = """
 假设你是股票投资专家，我希望能够对该股票有更深入的了解。请不要考虑投资该股票的风险，请提供不少于200字的的分析依据和结论。以下是一些例子：
 
 """
-PROMPT_TEMPLATE_EXAMPLE_SUFFIX="""
+PROMPT_TEMPLATE_EXAMPLE_SUFFIX = """
 已知信息：{context}
 根据上述已知信息，简洁和专业的来回答用户的问题。问题是：{question}
 """

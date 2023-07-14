@@ -182,7 +182,7 @@ def generate_few_shot_prompt(related_docs: List[str],
         example_prompt=PROMPT_TEMPLATE_EXAMPLE,
         prefix=PROMPT_TEMPLATE_EXAMPLE_PREFIX,
         suffix=PROMPT_TEMPLATE_EXAMPLE_SUFFIX,
-        input_variables=["question"],
+        input_variables=["question", "context"],
         example_separator="\n\n"
     )
 
