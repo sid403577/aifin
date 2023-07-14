@@ -160,6 +160,7 @@ def generate_prompt(related_docs: List[str],
     # context = "\n".join([doc.page_content for doc in related_docs])
     context = join_array_with_index([doc.page_content for doc in related_docs])
     prompt = prompt_template.replace("{question}", query).replace("{context}", context)
+    print(f"prompt: {prompt}")
     return prompt
 
 
@@ -320,15 +321,14 @@ class LocalDocQA:
     def question_generator_keywords(self, query, chat_history=[]):
         resp = self.question_generator(query, chat_history, prompt_template=CONDENSE_QUESTION_PROMPT_KEYWORDS, history_len=LLM_HISTORY_LEN)
         question, keywords = extract_question_and_keywords(resp)
-        print(f"extract question:{question} keywords:{keywords}")
-        if keywords:
-            return keywords
-        if question:
-            return question
-        return query
+        if question or keywords:
+            print(f"extract question:{question} keywords:{keywords}")
+            return question, keywords
+        print(f"extract question:{question} keywords:{keywords} resp: {resp}")
+        return resp, resp
 
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
-        keywords = self.question_generator_keywords(query, chat_history)
+        question, keywords = self.question_generator_keywords(query, chat_history)
         vector_store = load_vector_store(vs_path, self.embeddings)
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
@@ -342,9 +342,9 @@ class LocalDocQA:
                         }
             yield response, chat_history
         if len(related_docs_with_score) > 0:
-            prompt = generate_prompt(related_docs_with_score, query)
+            prompt = generate_prompt(related_docs_with_score, question)
         else:
-            prompt = query
+            prompt = question
 
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
@@ -383,7 +383,7 @@ class LocalDocQA:
         return response, prompt
 
     def get_search_result_based_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        keywords = self.question_generator_keywords(query, chat_history)
+        question, keywords = self.question_generator_keywords(query, chat_history)
         results = bing_search(keywords)
         result_docs = search_result2docs(results)
         if streaming:
@@ -392,7 +392,7 @@ class LocalDocQA:
                         "source_documents": result_docs
                         }
             yield response, chat_history
-        prompt = generate_prompt(result_docs, query)
+        prompt = generate_prompt(result_docs, question)
 
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
@@ -410,7 +410,7 @@ class LocalDocQA:
             描述：获取知识库和google搜索的内容集合
             knowledge_ratio：知识库占比（0-1）
         """
-        keywords = self.question_generator_keywords(query, chat_history)
+        question, keywords = self.question_generator_keywords(query, chat_history)
         s = time.perf_counter()
         results = google_search(keywords, self.top_k)
         elapsed = time.perf_counter() - s
@@ -452,7 +452,7 @@ class LocalDocQA:
                         }
             yield response, chat_history
 
-        prompt = generate_prompt(result_docs, query)
+        prompt = generate_prompt(result_docs, question)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
             resp = answer_result.llm_output["answer"]
@@ -466,7 +466,7 @@ class LocalDocQA:
         print(f"AI结束 {elapsed:0.2f} seconds")
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        keywords = self.question_generator_keywords(query, chat_history)
+        question, keywords = self.question_generator_keywords(query, chat_history)
         s = time.perf_counter()
         results = google_search(keywords, self.top_k)
         elapsed = time.perf_counter() - s
@@ -491,7 +491,7 @@ class LocalDocQA:
         elapsed = time.perf_counter() - s
         print(f"google search 向量化搜索结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
 
-        prompt = generate_prompt(result_docs, query)
+        prompt = generate_prompt(result_docs, question)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
             resp = answer_result.llm_output["answer"]
