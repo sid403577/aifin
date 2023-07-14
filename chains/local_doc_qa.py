@@ -487,7 +487,7 @@ class LocalDocQA:
             yield response, chat_history
 
         # prompt = generate_prompt(result_docs, question)
-        prompt = generate_few_shot_prompt(result_docs, question)
+        prompt = generate_few_shot_prompt(result_docs, question, self.embeddings)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
             resp = answer_result.llm_output["answer"]
@@ -533,7 +533,7 @@ class LocalDocQA:
             yield response, chat_history
 
         # prompt = generate_prompt(result_docs, question)
-        prompt = generate_few_shot_prompt(result_docs, question)
+        prompt = generate_few_shot_prompt(result_docs, question, self.embeddings)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
             resp = answer_result.llm_output["answer"]
