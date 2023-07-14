@@ -491,7 +491,7 @@ class LocalDocQA:
                         }
             yield response, chat_history
 
-        if result_docs or len(result_docs) == 0:
+        if result_docs is None or len(result_docs) == 0:
             response = {"query": query,
                         "result": "无法找到相关知识",
                         "source_documents": result_docs}
@@ -544,7 +544,7 @@ class LocalDocQA:
                         }
             yield response, chat_history
 
-        if result_docs or len(result_docs) == 0:
+        if result_docs is None or len(result_docs) == 0:
             response = {"query": query,
                         "result": "无法找到相关知识",
                         "source_documents": result_docs}
