@@ -164,16 +164,9 @@ def generate_prompt(related_docs: List[str],
     return prompt
 
 
-def search_result2docs(search_results, vectorstore: VectorStore = None):
+def search_result2docs(search_results):
     docs = []
-    # text_splitter = ChineseTextSplitter(pdf=False, sentence_size=SENTENCE_SIZE)
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
     for result in search_results:
-        doc = Document(page_content=result["snippet"] if "snippet" in result.keys() else "",
-                       metadata={"url": result["link"] if "link" in result.keys() else "",
-                                 "title": result["title"] if "title" in result.keys() else "",
-                                 "source": 'online',
-                                 })
         content = None
         if "content" in result.keys():
             content = result["content"]
@@ -186,10 +179,12 @@ def search_result2docs(search_results, vectorstore: VectorStore = None):
         if len(result["snippet"]) == 0:
             continue
 
-        if vectorstore:
-            if content is None:
-                content = doc.page_content
-            vectorstore.add_documents(text_splitter.split_documents([Document(page_content=content, metadata=doc.metadata)]))
+        doc = Document(page_content=content if content else result["snippet"],
+                       metadata={"url": result["link"] if "link" in result.keys() else "",
+                                 "title": result["title"] if "title" in result.keys() else "",
+                                 "source": 'online',
+                                 "snippet": result["snippet"],
+                                 })
         docs.append(doc)
     return docs
 
@@ -334,7 +329,7 @@ class LocalDocQA:
         if question or keywords:
             print(f"extract question:{question} keywords:{keywords}")
             return question, keywords
-        print(f"extract question:{question} keywords:{keywords} resp: {resp}")
+        print(f"resp: {resp}")
         return resp, resp
 
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
@@ -422,38 +417,36 @@ class LocalDocQA:
         """
         question, keywords = self.question_generator_keywords(query, chat_history)
         s = time.perf_counter()
-        results = google_search(keywords, self.top_k)
-        elapsed = time.perf_counter() - s
-        print(f"google search 向量化开始 {elapsed:0.2f} seconds")
         # 谷歌搜索
-        tmp_vs_path = str(uuid.uuid4())
-        vector_store = temp_vector_store(tmp_vs_path, self.embeddings)
-        vector_store.chunk_size = self.chunk_size
-        vector_store.chunk_conent = self.chunk_conent
-        vector_store.score_threshold = self.score_threshold
-        search_result2docs(results, vector_store)
+        results = google_search(keywords, self.top_k)
+        gdocs = search_result2docs(results)
         elapsed = time.perf_counter() - s
-        print(f"google search 向量化结束 {elapsed:0.2f} seconds")
-
+        print(f"google搜索 结束 {elapsed:0.2f} seconds len:{len(gdocs)}")
         # 知识库搜索
         vector_store2 = load_vector_store(vs_path, self.embeddings)
         vector_store2.chunk_size = self.chunk_size
         vector_store2.chunk_conent = self.chunk_conent
         vector_store2.score_threshold = self.score_threshold
-        print(f"知识库向量化搜索 {elapsed:0.2f} seconds")
         related_docs_with_score = vector_store2.similarity_search_with_score(keywords, self.top_k)
-        tdocs = [doc for doc in related_docs_with_score]
+        ldocs = [doc for doc in related_docs_with_score]
+        elapsed = time.perf_counter() - s
+        print(f"知识库搜索 结束{elapsed:0.2f} seconds len:{len(ldocs)}")
+
+        tmp_vs_path = str(uuid.uuid4())
+        vector_store = temp_vector_store(tmp_vs_path, self.embeddings)
+        vector_store.chunk_size = self.chunk_size
+        vector_store.chunk_conent = self.chunk_conent
+        vector_store.score_threshold = self.score_threshold
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
-        docs = text_splitter.split_documents(tdocs)
+        docs = text_splitter.split_documents(gdocs+ldocs)
         vector_store.add_documents(docs)
         elapsed = time.perf_counter() - s
-        print(f"知识库向量化搜索追加 {elapsed:0.2f} seconds len:{len(docs)}")
-
+        print(f"本地向量化 {elapsed:0.2f} seconds len:{len(docs)}")
         result_docs = vector_store.similarity_search_with_score(query, self.top_k)
         temp_vector_store_rm(tmp_vs_path)
         torch_gc()
         elapsed = time.perf_counter() - s
-        print(f"向量化搜索结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
+        print(f"本地向量化搜索 结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
 
         if streaming:
             response = {"query": query,
@@ -479,27 +472,33 @@ class LocalDocQA:
         question, keywords = self.question_generator_keywords(query, chat_history)
         s = time.perf_counter()
         results = google_search(keywords, self.top_k)
+        gdocs = search_result2docs(results)
         elapsed = time.perf_counter() - s
-        print(f"google search 向量化开始 {elapsed:0.2f} seconds")
+        print(f"google搜索 结束 {elapsed:0.2f} seconds len:{len(gdocs)}")
+
         tmp_vs_path = str(uuid.uuid4())
         vector_store = temp_vector_store(tmp_vs_path, self.embeddings)
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
         vector_store.score_threshold = self.score_threshold
-        result_docs = search_result2docs(results, vector_store)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
+        docs = text_splitter.split_documents(gdocs)
+        vector_store.add_documents(docs)
         elapsed = time.perf_counter() - s
-        print(f"google search 向量化结束 {elapsed:0.2f} seconds")
+        print(f"本地向量化 {elapsed:0.2f} seconds len:{len(docs)}")
+
+        result_docs = vector_store.similarity_search_with_score(keywords, self.top_k)
+        temp_vector_store_rm(tmp_vs_path)
+        torch_gc()
+        elapsed = time.perf_counter() - s
+        print(f"本地向量化搜索 结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
+
         if streaming:
             response = {"query": query,
                         "result": "",
                         "source_documents": result_docs
                         }
             yield response, chat_history
-        result_docs = vector_store.similarity_search_with_score(keywords, self.top_k)
-        temp_vector_store_rm(tmp_vs_path)
-        torch_gc()
-        elapsed = time.perf_counter() - s
-        print(f"google search 向量化搜索结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
 
         prompt = generate_prompt(result_docs, question)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
