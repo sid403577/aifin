@@ -519,7 +519,7 @@ async def chat_llm(websocket: WebSocket):
                                 "title": doc.metadata.get("title"),
                                 "url": doc.metadata.get("url"),
                                 "rootUrl": get_root_domain(doc.metadata.get("url")),
-                                "content": doc.page_content,
+                                "content": doc.metadata["snippet"] if "snippet" in doc.metadata.keys() else doc.page_content,
                                 "date": doc.metadata.get("date"),
                                 "score": doc.metadata.get("score"),
                                 "source": doc.metadata.get("source"),
