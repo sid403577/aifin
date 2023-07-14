@@ -4,9 +4,11 @@ import shutil
 from functools import lru_cache
 from typing import List
 
+from langchain import FewShotPromptTemplate
 from langchain.docstore.document import Document
 from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
+from langchain.prompts.example_selector import SemanticSimilarityExampleSelector
 from pypinyin import lazy_pinyin
 from tqdm import tqdm
 
@@ -157,9 +159,35 @@ def generate_prompt(related_docs: List[str],
                     query: str,
                     prompt_template: str = PROMPT_TEMPLATE, ) -> str:
 
-    # context = "\n".join([doc.page_content for doc in related_docs])
-    context = join_array_with_index([doc.page_content for doc in related_docs])
+    context = "\n".join([doc.page_content for doc in related_docs])
     prompt = prompt_template.replace("{question}", query).replace("{context}", context)
+    print(f"prompt: {prompt}")
+    return prompt
+
+def generate_few_shot_prompt(related_docs: List[str],
+                    query: str, embeddings) -> str:
+    example_selector = SemanticSimilarityExampleSelector.from_examples(
+        # This is the list of examples available to select from.
+        PROMPT_TEMPLATE_EXAMPLES,
+        # This is the embedding class used to produce embeddings which are used to measure semantic similarity.
+        embeddings,
+        # This is the VectorStore class that is used to store the embeddings and do a similarity search over.
+        MyFAISS,
+        # This is the number of examples to produce.
+        k=1
+    )
+    few_shot_prompt_template = FewShotPromptTemplate(
+        example_selector=example_selector,
+        # examples = examples,
+        example_prompt=PROMPT_TEMPLATE_EXAMPLE,
+        prefix=PROMPT_TEMPLATE_EXAMPLE_PREFIX,
+        suffix=PROMPT_TEMPLATE_EXAMPLE_SUFFIX,
+        input_variables=["question"],
+        example_separator="\n\n"
+    )
+
+    context = "\n".join([doc.page_content for doc in related_docs])
+    prompt = few_shot_prompt_template.replace("{question}", query).replace("{context}", context)
     print(f"prompt: {prompt}")
     return prompt
 
@@ -458,7 +486,8 @@ class LocalDocQA:
                         }
             yield response, chat_history
 
-        prompt = generate_prompt(result_docs, question)
+        # prompt = generate_prompt(result_docs, question)
+        prompt = generate_few_shot_prompt(result_docs, question)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
             resp = answer_result.llm_output["answer"]
@@ -503,7 +532,8 @@ class LocalDocQA:
                         }
             yield response, chat_history
 
-        prompt = generate_prompt(result_docs, question)
+        # prompt = generate_prompt(result_docs, question)
+        prompt = generate_few_shot_prompt(result_docs, question)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
                                                       streaming=streaming):
             resp = answer_result.llm_output["answer"]
