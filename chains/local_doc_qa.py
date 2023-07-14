@@ -491,6 +491,13 @@ class LocalDocQA:
                         }
             yield response, chat_history
 
+        if result_docs or len(result_docs) == 0:
+            response = {"query": query,
+                        "result": "无法找到相关知识",
+                        "source_documents": result_docs}
+            yield response, chat_history
+            return
+
         # prompt = generate_prompt(result_docs, question)
         prompt = generate_few_shot_prompt(result_docs, question, self.embeddings)
         for answer_result in self.llm.generatorAnswer(prompt=prompt, history=chat_history,
@@ -536,6 +543,13 @@ class LocalDocQA:
                         "source_documents": result_docs
                         }
             yield response, chat_history
+
+        if result_docs or len(result_docs) == 0:
+            response = {"query": query,
+                        "result": "无法找到相关知识",
+                        "source_documents": result_docs}
+            yield response, chat_history
+            return
 
         # prompt = generate_prompt(result_docs, question)
         prompt = generate_few_shot_prompt(result_docs, question, self.embeddings)
