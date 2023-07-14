@@ -182,7 +182,7 @@ PROMPT_TEMPLATE_EXAMPLE_SUFFIX="""
 根据上述已知信息，简洁和专业的来回答用户的问题。问题是：{question}
 """
 
-PROMPT_TEMPLATE_EXAMPLES = """
+PROMPT_TEMPLATE_EXAMPLES = [
     {
         "query": "科士达现在能不能买入？",
         "answer": "\
@@ -204,7 +204,7 @@ PROMPT_TEMPLATE_EXAMPLES = """
         1、最近2年、5年公司股价波动率水平分别是92%、67%。整体处于震荡上涨趋势，历史最大回调幅度60%。\
         2、最近半年公司年化波动30%以上，处于下跌趋势，若遭遇重大系统性风险，公司股价存在继续调整的可能。"
     }
-"""
+]
 
 # 缓存知识库数量
 CACHED_VS_NUM = 1
