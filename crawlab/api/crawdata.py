@@ -30,7 +30,8 @@ def buildMarketdata(stock:str,market:int):
             if 'data' in response_text:
                 length = len(response_text['data'])
                 print(f"获取到{length}条数据")
-                print("----")
+                print("----------------")
+                print("")
                 if length==0:
                     print(f"原因：{'' if 'msg' not in response_text else response_text['msg']}")
                     break
