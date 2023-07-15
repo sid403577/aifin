@@ -86,7 +86,9 @@ def buildMarketdata(stock:str,market:int):
                                     print(f"相关个股-stockInfo:{stockInfo}")
                     print(f"第{total}条数据处理完成")
                     print("\n")
-
+            if not response_text['hasNext']:
+                print("hasNext==False，跳出循环")
+                break  
         page+=1
         print(f"第{page}页数据内容获取完毕")
 
