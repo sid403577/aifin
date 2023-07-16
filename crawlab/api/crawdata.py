@@ -1,6 +1,7 @@
 # 获取单只股票的数据
 import datetime
 import json
+import sys
 
 import requests
 from bs4 import BeautifulSoup
@@ -186,5 +187,6 @@ def store(docs: list[Document]):
 
 
 if __name__ == '__main__':
+    stock = sys.argv[1]  # 域名
     for market in marketMap:
-        buildMarketdata("002518", market)
+        buildMarketdata(stock, market)
