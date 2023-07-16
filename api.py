@@ -474,7 +474,7 @@ async def chat_llm(websocket: WebSocket):
 
         elif tp == 3:
             for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
-                    query=question, vs_path="LangChainCollection", chat_history=history, streaming=True,
+                    query=question, vs_path="tonghuashun_2ection", chat_history=history, streaming=True,
                     knowledge_ratio=0.5):
                 if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
@@ -509,7 +509,7 @@ async def chat_llm(websocket: WebSocket):
 
         elif tp == 4:
             for result, history in local_doc_qa.get_knowledge_based_answer(
-                    query=question, vs_path="LangChainCollection", chat_history=history, streaming=True):
+                    query=question, vs_path="tonghuashun_2ection", chat_history=history, streaming=True):
                 if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
                     source_documents = [

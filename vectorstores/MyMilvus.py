@@ -14,7 +14,7 @@ class MyMilvus(Milvus, VectorStore):
     def __init__(
             self,
             embedding_function: Callable,
-            collection_name: str = "LangChainCollection"
+            collection_name: str = "tonghuashun_2ection"
     ):
         s = time.perf_counter()
         print(f"load milvus ...")
