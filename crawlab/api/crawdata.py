@@ -7,26 +7,32 @@ import requests
 from bs4 import BeautifulSoup
 
 marketMap = {
-    48: "新同花顺指数",
     32: "深圳证券交易所",
     16: "上海证券交易所",
+}
 
-    104: "申万指数",
-    144: "三板市场",
-    176: "香港联交所",
-    168: "纽约交易所",
-    184: "纳斯达克",
+stockMap = {
+    "002594": "比亚迪",
+    "600887": "伊利股份",
+    "300750": "宁德时代",
+    "002518": "科士达",
+    "600225": "卓朗科技",
+    "600977": "中国电影",
+    "603259": "药明康德",
+    "000063": "中兴通讯",
+    "600737": "中粮糖业",
 }
 
 
 def buildMarketdata(stock: str, market: int):
     import csv
     # from crawlab import save_item
-    csv_file = open(f"/data/api_2_comments_data_{stock}_{market}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.csv",
-                    'a+',
-                    newline='', encoding='utf-8-sig')  # 解决中文乱码问题。a+表示向csv文件追加
+    csv_file = open(
+        f"/data/api_2_comments_data_{stock}_{market}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.csv",
+        'a+',
+        newline='', encoding='utf-8-sig')  # 解决中文乱码问题。a+表示向csv文件追加
     writer = csv.writer(csv_file)
-    writer.writerow(['id','date', 'title', 'content', ])
+    writer.writerow(['id', 'date', 'title', 'content', 'url'])
 
     page = 0
     total = 0
@@ -104,7 +110,7 @@ def buildMarketdata(stock: str, market: int):
                                             s_date = time
                                         createTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                                         # 写入csv文件
-                                        result_item1 = [total,s_date, title, content]
+                                        result_item1 = [total, s_date, title, content, url]
                                         writer.writerow(result_item1)  # 原来的链接不全因此给他补齐
                                         # 写入矢量库
                                         doc = Document(page_content=content,
@@ -187,6 +193,15 @@ def store(docs: list[Document]):
 
 
 if __name__ == '__main__':
-    stock = sys.argv[1]  # 域名
-    for market in marketMap:
-        buildMarketdata(stock, market)
+    if len(sys.argv) > 1:
+        stock = sys.argv[1]  # 域名
+        if stock.startswith("6"):
+            buildMarketdata(stock, 16)
+        else:
+            buildMarketdata(stock, 32)
+    else:
+        for stock in stockMap:
+            if stock.startswith("6"):
+                buildMarketdata(stock, 16)
+            else:
+                buildMarketdata(stock, 32)
