@@ -86,7 +86,15 @@ htmlcontent = {
         "name": "路透社网站",
         "enable": True,
         "sort": 9,
-    }
+    },
+    "finance.eastmoney.com": {
+        "element": "div",
+        "attr": {"class": "txtinfos"},
+        "testCaseList": ['https://finance.eastmoney.com/a/202307142781111325.html'],
+        "name": "东方财富财经频道",
+        "enable": True,
+        "sort": 10,
+    },
 }
 
 
