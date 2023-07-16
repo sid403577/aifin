@@ -21,7 +21,7 @@ marketMap = {
 def buildMarketdata(stock: str, market: int):
     import csv
     # from crawlab import save_item
-    csv_file = open(f"/data/api_comments_data_{stock}_{market}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.csv",
+    csv_file = open(f"/data/api_2_comments_data_{stock}_{market}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.csv",
                     'a+',
                     newline='', encoding='utf-8-sig')  # 解决中文乱码问题。a+表示向csv文件追加
     writer = csv.writer(csv_file)
@@ -32,7 +32,7 @@ def buildMarketdata(stock: str, market: int):
     print(f"========开始获取【{stock}】在【{marketMap[market]}】的数据")
     while True:
         print(f"开始获取第{page + 1}页数据")
-        url = f"https://b2b-news.10jqka.com.cn/hxcota/market/stocks/v2/list?stock={stock}&market={market}&type=1&accessKey=74f9abd518ab0970&page={page}&pageSize=50"
+        url = f"https://b2b-news.10jqka.com.cn/hxcota/market/stocks/v2/list?stock={stock}&market={market}&type=1&accessKey=74f9abd518ab0970&page={page}&pageSize=250"
         print(f"url:{url}")
         response = requests.get(url)
         if response.status_code == 200:
@@ -175,7 +175,7 @@ def store(docs: list[Document]):
                 docs,
                 embeddings,
                 connection_args={"host": "8.217.52.63", "port": "19530"},
-                collection_name="tonghuashun",
+                collection_name="tonghuashun_2",
             )
             break
         except Exception as e:
@@ -187,4 +187,4 @@ def store(docs: list[Document]):
 
 if __name__ == '__main__':
     for market in marketMap:
-        buildMarketdata("002594", market)
+        buildMarketdata("002518", market)
