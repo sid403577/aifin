@@ -105,7 +105,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
         storageList: list[Document] = []
         esDocList: list = []
         for i in range(0, len(data)):
-
+            print("\n---------------------")
             try:
                 date = data[i]['date']
                 if type == "1":
@@ -119,7 +119,6 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                 total += 1
                 print(f"开始处理第{total}条数据：{data[i]}")
                 # 数据处理
-                print(f"获取第{total}条数据的link内容：{link}")
                 url = data[i]['url']
                 abstract = data[i]['content']
                 text = get_text(url, param_content['text_re'])
@@ -127,13 +126,13 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                 uniqueId = data[i]['code']
                 createTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 if abstract:
-                    abstract = abstract.replace('</em>', '').replace('<em>', '').split()
+                    abstract = abstract.replace('</em>', '').replace('<em>', '').strip()
                 if text:
-                    text = text.replace('</em>', '').replace('<em>', '').split()
+                    text = text.replace('</em>', '').replace('<em>', '').strip()
                 else:
                     text = abstract
                 if title:
-                    title = title.replace('</em>', '').replace('<em>', '').split()
+                    title = title.replace('</em>', '').replace('<em>', '').strip()
 
 
                 print(f"uniqueId:{uniqueId}")
@@ -280,10 +279,10 @@ def esBatch(docList:list):
 
 
 if __name__ == "__main__":
-    domain = sys.argv[1]  # 域名
-    code = sys.argv[2]  # 股票代码
-    type = sys.argv[3]  # 增量1，全量2
-    startPage = sys.argv[4]  # 从第几页
-    print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
-    eastmoney(domain, code, type, int(startPage))
-    #eastmoney("search-api-web.eastmoney.com", "002594", "2", 1)
+    # domain = sys.argv[1]  # 域名
+    # code = sys.argv[2]  # 股票代码
+    # type = sys.argv[3]  # 增量1，全量2
+    # startPage = sys.argv[4]  # 从第几页
+    # print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
+    # eastmoney(domain, code, type, int(startPage))
+    eastmoney("search-api-web.eastmoney.com", "002594", "2", 1)
