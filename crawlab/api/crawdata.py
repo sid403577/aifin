@@ -26,15 +26,6 @@ stockMap = {
 
 
 def buildMarketdata(stock: str, market: int):
-    import csv
-    # from crawlab import save_item
-    csv_file = open(
-        f"/data/api_aifin_comments_data_{stock}_{market}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.csv",
-        'a+',
-        newline='', encoding='utf-8-sig')  # 解决中文乱码问题。a+表示向csv文件追加
-    writer = csv.writer(csv_file)
-    writer.writerow(['id','uniqueId', 'date', 'title', 'content', 'url'])
-
     page = 0
     total = 0
     print(f"========开始获取【{stock}】在【{marketMap[market]}】的数据")
@@ -122,9 +113,6 @@ def buildMarketdata(stock: str, market: int):
                                             print("发布时间解析异常，")
                                             s_date = time
                                         createTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                                        # 写入csv文件
-                                        result_item1 = [total,uniqueId, s_date, title, content, url]
-                                        writer.writerow(result_item1)  # 原来的链接不全因此给他补齐
                                         # 写入矢量库
                                         metadata = {"source": "API",
                                                     "uniqueId": uniqueId,
@@ -162,7 +150,6 @@ def buildMarketdata(stock: str, market: int):
                 break
 
     print(f"========获取【{stock}】在【{marketMap[market]}】的数据完毕，一共获取到【{total}】条数据")
-    csv_file.close()
 
 
 ###################### 存储类 ###############################################
