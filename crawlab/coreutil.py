@@ -163,6 +163,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                 esDocList.append(es_doc)
 
                 print(f"第{total}条数据处理完成")
+                print("\n")
 
             except Exception as e:
                 print(
@@ -175,6 +176,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
             esBatch(esDocList)
 
         print(f"第{pageIndex}页数据处理完成")
+        print("\n")
         if len(data) < pageSize:
             break
         pageIndex += 1
