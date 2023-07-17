@@ -444,6 +444,7 @@ def docs2source(docs):
                                 "source": doc.metadata.get("source"),
                             }
                         ))
+        url_set.add(doc.metadata.get("url"))
         inum = inum + 1
     return rdocs
 
