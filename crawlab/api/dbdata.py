@@ -1,8 +1,6 @@
 import datetime
-import json
 
 import pyodbc
-from elasticsearch import Elasticsearch
 
 ###################### 存储类 ###############################################
 
