@@ -1,0 +1,167 @@
+import datetime
+import json
+
+import pyodbc
+from elasticsearch import Elasticsearch
+
+###################### 存储类 ###############################################
+
+import torch
+from langchain.docstore.document import Document
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import Milvus
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+embedding_model_dict = {
+    "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
+    "ernie-base": "nghuyong/ernie-3.0-base-zh",
+    "text2vec-base": "shibing624/text2vec-base-chinese",
+    "text2vec": "D://develop/model/text2vec-large-chinese",
+    "m3e-small": "moka-ai/m3e-small",
+    "m3e-base": "moka-ai/m3e-base",
+}
+EMBEDDING_MODEL = "text2vec"
+EMBEDDING_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+
+
+def load_and_split(docs: list[Document]) -> list[Document]:
+    print("进入切词阶段")
+    """Load documents and split into chunks."""
+    _text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
+    related_docs = _text_splitter.split_documents(docs)
+    return [doc for doc in related_docs if len(doc.page_content.strip()) > 50]
+
+
+def store(docs: list[Document]):
+    docs = load_and_split(docs)
+    print("进入存储阶段")
+    embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
+                                       model_kwargs={'device': EMBEDDING_DEVICE})
+    count = 0
+    while True and count < 3:
+        try:
+            Milvus.from_documents(
+                docs,
+                embeddings,
+                connection_args={"host": "8.217.52.63", "port": "19530"},
+                collection_name="aifin",
+            )
+            break
+        except Exception as e:
+            print(f"error,写入矢量库异常,{e}")
+            count += 1
+
+    print("over")
+
+from elasticsearch import Elasticsearch
+from elasticsearch.helpers import bulk
+# 连接到Elasticsearch实例
+def esBatch(docList:list):
+    es = Elasticsearch(['172.28.84.188:9200'])
+    #es = Elasticsearch("http://192.168.1.1:9200", http_auth=('username', 'password'), timeout=20)
+    index_name = 'aifin'
+    if not es.indices.exists(index=index_name):
+        es.indices.create(index=index_name)
+    # 定义要插入的文档数据
+    # 使用bulk()方法批量插入文档
+    actions = [
+        {
+            '_index': index_name,
+            '_source': doc
+        }
+        for doc in docList
+    ]
+
+    count = 0
+    while True and count < 3:
+        try:
+            bulk(es, actions)
+            break
+        except Exception as e:
+            print(f"error,写入矢量库异常,{e}")
+            count += 1
+    bulk(es, actions)
+
+
+def transEs(security_code:str):
+    # Set up the SQL Server connection
+    server = '36.137.180.195,24857'
+    database = 'emdata'
+    username = 'emdata'
+    password = 'emdata'
+
+    connection_string = f"DRIVER={{SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
+    conn = pyodbc.connect(connection_string)
+    cursor = conn.cursor()
+    query = f"""
+    SELECT 'DB' as source,
+           a.SECURITYCODE as code,
+           a.EID as uniqueId,
+           '研报' as type,
+           a.COLUMNNAME as reTypeName,
+           a.SOURCEURL as url,
+           a.REPORT_TITLE_TRANSFER as title,
+           a.PUBLISHDATE as date,
+           a.SRATINGNAME as rawTating,
+           a.COMPANYNAME as comeName,
+           b.SEARCHCONTENT as abstract,
+           b.INFOBODYCONTENT as text
+    FROM INFO_RE_BASINFOCOM a
+    JOIN INFO_RE_CONTENTCOM b ON a.INFOCODE = b.INFOCODE
+    WHERE a.SECURITYCODE = '{security_code}'
+    ORDER BY a.PUBLISHDATE DESC
+    """
+
+    has_more_results = True
+    while has_more_results:
+        cursor.execute(query)
+        results = cursor.fetchmany(500)  # Retrieve 500 records at a time
+
+        if not results:
+            has_more_results = False
+            break
+
+        storageList: list[Document] = []
+        esDocList: list = []
+        for row in results:
+            metadata = {
+                'source': row.source,
+                'code': row.code,
+                'uniqueId': row.uniqueId,
+                'type': row.type,
+                'reTypeName': row.reTypeName,
+                'url': row.url,
+                'title': row.title,
+                'date': row.date,
+                'createTime': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'rawTating': row.rawTating,
+                'comeName': row.comeName,
+                'abstract': row.abstract,
+            }
+            content = row.text
+            doc = Document(page_content=content,
+                           metadata=metadata)
+            storageList.append(doc)
+            # 写入到es
+            es_doc = {'text': content}
+            es_doc.update(metadata)
+            print(es_doc)
+            esDocList.append(es_doc)
+
+        if len(storageList) > 0:
+            store(storageList)
+            # 存入es库
+        if len(esDocList) > 0:
+            esBatch(esDocList)
+
+    # Close the connections
+    cursor.close()
+    conn.close()
+
+
+
+
+if __name__ == '__main__':
+    security_code = ['002594']
+    for row in security_code:
+        docs = transEs(row)
