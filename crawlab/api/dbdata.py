@@ -119,7 +119,6 @@ def transEs(security_code:str):
             FROM INFO_RE_BASINFOCOM a
             JOIN INFO_RE_CONTENTCOM b ON a.INFOCODE = b.INFOCODE
             WHERE a.SECURITYCODE = '{security_code}'
-            and a.EID = 160000000744856202
             ORDER BY a.PUBLISHDATE DESC
             OFFSET {skip_count} ROWS FETCH NEXT {page_size} ROWS ONLY
             """
