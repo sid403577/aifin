@@ -6,6 +6,7 @@ import sys
 import requests
 from bs4 import BeautifulSoup
 
+
 marketMap = {
     32: "深圳证券交易所",
     16: "上海证券交易所",
@@ -28,7 +29,7 @@ def buildMarketdata(stock: str, market: int):
     import csv
     # from crawlab import save_item
     csv_file = open(
-        f"/data/api_3_comments_data_{stock}_{market}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.csv",
+        f"/data/api_aifin_comments_data_{stock}_{market}_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}.csv",
         'a+',
         newline='', encoding='utf-8-sig')  # 解决中文乱码问题。a+表示向csv文件追加
     writer = csv.writer(csv_file)
@@ -53,6 +54,7 @@ def buildMarketdata(stock: str, market: int):
                     print(f"原因：{'' if 'msg' not in response_text else response_text['msg']}")
                     break
                 storageList: list[Document] = []
+                esDocList: list = []
                 for pre_data in response_text['data']:
                     try:
                         total += 1
@@ -113,17 +115,23 @@ def buildMarketdata(stock: str, market: int):
                                         result_item1 = [total,uniqueId, s_date, title, content, url]
                                         writer.writerow(result_item1)  # 原来的链接不全因此给他补齐
                                         # 写入矢量库
+                                        metadata = {"source": "API",
+                                                    "uniqueId": uniqueId,
+                                                    "code": stock,
+                                                    "url": url,
+                                                    "date": s_date,
+                                                    "type": "资讯",
+                                                    "createTime": createTime,
+                                                    "abstract": abstract,
+                                                    "title": title}
                                         doc = Document(page_content=content,
-                                                       metadata={"source": "API",
-                                                                 "uniqueId":uniqueId,
-                                                                 "code": stock,
-                                                                 "url": url,
-                                                                 "date": s_date,
-                                                                 "type": "资讯",
-                                                                 "from": marketMap[market],
-                                                                 "createTime": createTime,
-                                                                 "title": title})
+                                                       metadata=metadata)
                                         storageList.append(doc)
+                                        # 写入到es
+                                        es_doc= {'text':content}
+                                        es_doc.update(metadata)
+                                        esDocList.append(es_doc)
+
                         print(f"第{total}条数据处理完成")
                         print("\n")
                     except Exception as e:
@@ -132,6 +140,9 @@ def buildMarketdata(stock: str, market: int):
                 # 存入矢量库
                 if len(storageList) > 0:
                     store(storageList)
+                # 存入es库
+                if len(esDocList)>0:
+                    esBatch(esDocList)
                 page += 1
                 print(f"第{page}页数据内容获取完毕")
 
@@ -183,7 +194,7 @@ def store(docs: list[Document]):
                 docs,
                 embeddings,
                 connection_args={"host": "8.217.52.63", "port": "19530"},
-                collection_name="tonghuashun_3",
+                collection_name="aifin",
             )
             break
         except Exception as e:
@@ -191,6 +202,27 @@ def store(docs: list[Document]):
             count += 1
 
     print("over")
+
+###################### es操作 ###############################################
+from elasticsearch import Elasticsearch
+from elasticsearch.helpers import bulk
+# 连接到Elasticsearch实例
+def esBatch(docList:list):
+    es = Elasticsearch(['172.28.84.188:9200'])
+    #es = Elasticsearch("http://192.168.1.1:9200", http_auth=('username', 'password'), timeout=20)
+    index_name = 'aifin'
+    if not es.indices.exists(index=index_name):
+        es.indices.create(index=index_name)
+    # 定义要插入的文档数据
+    # 使用bulk()方法批量插入文档
+    actions = [
+        {
+            '_index': index_name,
+            '_source': doc
+        }
+        for doc in docList
+    ]
+    bulk(es, actions)
 
 
 if __name__ == '__main__':
