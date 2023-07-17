@@ -42,7 +42,18 @@ def buildMarketdata(stock: str, market: int):
         print(f"开始获取第{page + 1}页数据")
         url = f"https://b2b-news.10jqka.com.cn/hxcota/market/stocks/v2/list?stock={stock}&market={market}&type=1&accessKey=74f9abd518ab0970&page={page}&pageSize=250"
         print(f"url:{url}")
-        response = requests.get(url)
+        count = 0
+        response =None
+        while True and count < 3:
+            try:
+                response = requests.get(url)
+                break
+            except Exception as e:
+                print(f"error,请求url异常,{e}")
+                count += 1
+        if not response:
+            raise Exception("请求url异常")
+
         if response.status_code == 200:
             response_text = json.loads(response.text)
             if 'data' in response_text:
@@ -188,9 +199,10 @@ def store(docs: list[Document]):
     embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
                                        model_kwargs={'device': EMBEDDING_DEVICE})
     count = 0
+    obj = None
     while True and count < 3:
         try:
-            Milvus.from_documents(
+            obj = Milvus.from_documents(
                 docs,
                 embeddings,
                 connection_args={"host": "8.217.52.63", "port": "19530"},
@@ -200,8 +212,9 @@ def store(docs: list[Document]):
         except Exception as e:
             print(f"error,写入矢量库异常,{e}")
             count += 1
-
-    print("over")
+    if not obj:
+        raise Exception("写入矢量库异常")
+    print("写入矢量库over")
 
 ###################### es操作 ###############################################
 from elasticsearch import Elasticsearch
@@ -222,8 +235,18 @@ def esBatch(docList:list):
         }
         for doc in docList
     ]
-    bulk(es, actions)
-
+    count = 0
+    esObj = None
+    while True and count < 3:
+        try:
+            esObj = bulk(es, actions)
+            break
+        except Exception as e:
+            print(f"error,写入ES库异常,{e}")
+            count += 1
+    if not esObj:
+        raise Exception("写入ES库异常")
+    print("写入ES库over")
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
