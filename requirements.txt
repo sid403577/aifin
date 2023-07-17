@@ -1,4 +1,5 @@
 pymilvus
+chromadb
 pymupdf
 paddlepaddle==2.4.2
 paddleocr~=2.6.1.3
