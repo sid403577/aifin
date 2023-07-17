@@ -24,7 +24,8 @@ htmlcontent = {
         "data": ['result', 'cmsArticleWebOld'],
         "text_re": {
             "element": "div",
-            "attr": {"class": "article"},
+            #"attr": {"class": "article"},
+            "attr": {"class": "txtinfos"},
         }
 
     }
@@ -37,7 +38,6 @@ def download_page(url, para=None):
         response = requests.get(crawUrl, params=para)
     else:
         response = requests.get(crawUrl)
-    # response.encoding = response.apparent_encoding
     if response.status_code == 200:
         # 以下为乱码异常处理
         try:
@@ -103,6 +103,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
 
         print(f"获取第{pageIndex}页的数据，大小为{len(data)}")
         storageList: list[Document] = []
+        esDocList: list = []
         for i in range(0, len(data)):
 
             try:
@@ -119,25 +120,47 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                 print(f"开始处理第{total}条数据：{data[i]}")
                 # 数据处理
                 print(f"获取第{total}条数据的link内容：{link}")
-                text = get_text(data[i]['url'], param_content['text_re'])
                 url = data[i]['url']
+                abstract = data[i]['content']
+                text = get_text(url, param_content['text_re'])
                 title = data[i]['title']
+                uniqueId = data[i]['code']
                 createTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                if abstract:
+                    abstract = abstract.replace('</em>', '').replace('<em>', '').split()
                 if text:
-                    text = text.replace('</em>', '').replace('<em>', '')
+                    text = text.replace('</em>', '').replace('<em>', '').split()
+                else:
+                    text = abstract
                 if title:
-                    title = title.replace('</em>', '').replace('<em>', '')
-                # 写入
-                doc = Document(page_content=text,
-                               metadata={"source": "Web",
-                                         "code": code,
-                                         "url": url,
-                                         "date": date,
-                                         "type": "资讯",
-                                         "from": "eastmoney.com",
-                                         "createTime": createTime,
-                                         "title": title})
+                    title = title.replace('</em>', '').replace('<em>', '').split()
+
+
+                print(f"uniqueId:{uniqueId}")
+                print(f"code:{code}")
+                print(f"url:{url}")
+                print(f"date:{date}")
+                print(f"type:{type}")
+                print(f"text:{text}")
+                print(f"abstract:{abstract}")
+                print(f"title:{title}")
+
+                metadata = {"source": "Web",
+                            "uniqueId": uniqueId,
+                            "code": code,
+                            "url": url,
+                            "date": date,
+                            "type": "东方财富-资讯",
+                            "createTime": createTime,
+                            "abstract": abstract,
+                            "title": title}
+                # 写入矢量库
+                doc = Document(page_content=text,metadata=metadata)
                 storageList.append(doc)
+                # 写入到es
+                es_doc = {'text': content}
+                es_doc.update(metadata)
+                esDocList.append(es_doc)
 
                 print(f"第{total}条数据处理完成")
 
@@ -147,6 +170,9 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
         # 存入矢量库
         if len(storageList) > 0:
             store(storageList)
+        # 存入es库
+        if len(esDocList) > 0:
+            esBatch(esDocList)
 
         print(f"第{pageIndex}页数据处理完成")
         if len(data) < pageSize:
@@ -170,8 +196,6 @@ def get_text(url, text_re: dict):
 
 ###################### 存储类 ###############################################
 
-from typing import List
-
 import torch
 from langchain.docstore.document import Document
 from langchain.embeddings import HuggingFaceEmbeddings
@@ -189,18 +213,6 @@ EMBEDDING_MODEL = "text2vec"
 EMBEDDING_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
 
-def load() -> List[Document]:
-    docs = []
-    content = "近日，网传今年2月份抢教授话筒的蒋同学高考655分，被哈工大录取。对此，7月6日，哈尔滨工业大学招生办工作人员回应称，录取还没开始，各省尚未投档，投档结束了才知道，录取时间可能在20日左右。"
-    source = "https://mbd.baidu.com/newspage/data/landingsuper?context=%7B%22nid%22%3A%22news_9605400130597382296%22%7D&n_type=-1&p_from=-1"
-    doc = Document(page_content=content,
-                   metadata={"source": source,
-                             "date": "2022-09-10 12:20:20",
-                             "title": "高考"})
-    docs.append(doc)
-    return docs
-
-
 def load_and_split(docs: list[Document]) -> list[Document]:
     """Load documents and split into chunks."""
     _text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
@@ -210,34 +222,66 @@ def load_and_split(docs: list[Document]) -> list[Document]:
 
 def store(docs: list[Document]):
     docs = load_and_split(docs)
-
+    print("进入存储阶段")
     embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
                                        model_kwargs={'device': EMBEDDING_DEVICE})
     count = 0
-    while True and count<3:
+    obj = None
+    while True and count < 3:
         try:
-            Milvus.from_documents(
+            obj = Milvus.from_documents(
                 docs,
                 embeddings,
                 connection_args={"host": "8.217.52.63", "port": "19530"},
+                collection_name="aifin",
             )
             break
-        except:
-            print("error,写入矢量库异常")
-            count+=1
+        except Exception as e:
+            print(f"error,写入矢量库异常,{e}")
+            count += 1
+    if not obj:
+        raise Exception("写入矢量库异常")
+    print("写入矢量库over")
 
-    print("over")
+
+###################### es操作 ###############################################
+from elasticsearch import Elasticsearch
+from elasticsearch.helpers import bulk
+# 连接到Elasticsearch实例
+def esBatch(docList:list):
+    es = Elasticsearch(['172.28.84.188:9200'])
+    #es = Elasticsearch("http://192.168.1.1:9200", http_auth=('username', 'password'), timeout=20)
+    index_name = 'aifin'
+    if not es.indices.exists(index=index_name):
+        es.indices.create(index=index_name)
+    # 定义要插入的文档数据
+    # 使用bulk()方法批量插入文档
+    actions = [
+        {
+            '_index': index_name,
+            '_source': doc
+        }
+        for doc in docList
+    ]
+    count = 0
+    esObj = None
+    while True and count < 3:
+        try:
+            esObj = bulk(es, actions)
+            break
+        except Exception as e:
+            print(f"error,写入ES库异常,{e}")
+            count += 1
+    if not esObj:
+        raise Exception("写入ES库异常")
+    print("写入ES库over")
 
 
 if __name__ == "__main__":
-    # code = input('请输入股票代码：')
-    # Start = input('请输入起始页：')
-    # size = input('请输入每页大小：')
-    # End = input('请输入结束页：')
     domain = sys.argv[1]  # 域名
     code = sys.argv[2]  # 股票代码
     type = sys.argv[3]  # 增量1，全量2
     startPage = sys.argv[4]  # 从第几页
     print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
     eastmoney(domain, code, type, int(startPage))
-    # output_csv(result)
+    #eastmoney("search-api-web.eastmoney.com", "002594", "2", 1)
