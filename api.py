@@ -425,6 +425,29 @@ def chat(
     )
 
 
+def docs2source(docs):
+    url_set = set()
+    rdocs = []
+    inum = 1
+    for doc in docs:
+        if doc.metadata.get("url") in url_set:
+            continue
+        rdocs.append(json.dumps(
+                            {
+                                "num": inum ,
+                                "title": doc.metadata.get("title"),
+                                "url": doc.metadata.get("url"),
+                                "rootUrl": get_root_domain(doc.metadata.get("url")),
+                                "content": doc.page_content,
+                                "date": doc.metadata.get("date"),
+                                "score": doc.metadata.get("score"),
+                                "source": doc.metadata.get("source"),
+                            }
+                        ))
+        inum = inum + 1
+    return rdocs
+
+
 
 
 async def chat_llm(websocket: WebSocket):
@@ -443,21 +466,7 @@ async def chat_llm(websocket: WebSocket):
                                                                                 streaming=True):
                 if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                    source_documents = [
-                        json.dumps(
-                            {
-                                "num": inum + 1,
-                                "title": doc.metadata.get("title"),
-                                "url": doc.metadata.get("url"),
-                                "rootUrl": get_root_domain(doc.metadata.get("url")),
-                                "content": doc.page_content,
-                                "date": doc.metadata.get("date"),
-                                "score": doc.metadata.get("score"),
-                                "source": doc.metadata.get("source"),
-                            }
-                        )
-                        for inum, doc in enumerate(result["source_documents"])
-                    ]
+                    source_documents = docs2source(result["source_documents"])
                 chat_message = ChatMessage(
                     question=question,
                     response=result["result"],
@@ -474,25 +483,11 @@ async def chat_llm(websocket: WebSocket):
 
         elif tp == 3:
             for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
-                    query=question, vs_path="tonghuashun_2ection", chat_history=history, streaming=True,
+                    query=question, vs_path="tonghuashun_2", chat_history=history, streaming=True,
                     knowledge_ratio=0.5):
                 if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                    source_documents = [
-                        json.dumps(
-                            {
-                                "num": inum + 1,
-                                "title": doc.metadata.get("title"),
-                                "url": doc.metadata.get("url"),
-                                "rootUrl": get_root_domain(doc.metadata.get("url")),
-                                "content": doc.page_content,
-                                "date": doc.metadata.get("date"),
-                                "score": doc.metadata.get("score"),
-                                "source": doc.metadata.get("source"),
-                            }
-                        )
-                        for inum, doc in enumerate(result["source_documents"])
-                    ]
+                    source_documents = docs2source(result["source_documents"])
                 chat_message = ChatMessage(
                     question=question,
                     response=result["result"],
@@ -509,24 +504,10 @@ async def chat_llm(websocket: WebSocket):
 
         elif tp == 4:
             for result, history in local_doc_qa.get_knowledge_based_answer(
-                    query=question, vs_path="tonghuashun_2ection", chat_history=history, streaming=True):
+                    query=question, vs_path="tonghuashun_2", chat_history=history, streaming=True):
                 if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                    source_documents = [
-                        json.dumps(
-                            {
-                                "num": inum + 1,
-                                "title": doc.metadata.get("title"),
-                                "url": doc.metadata.get("url"),
-                                "rootUrl": get_root_domain(doc.metadata.get("url")),
-                                "content": doc.metadata["snippet"] if "snippet" in doc.metadata.keys() else doc.page_content,
-                                "date": doc.metadata.get("date"),
-                                "score": doc.metadata.get("score"),
-                                "source": doc.metadata.get("source"),
-                            }
-                        )
-                        for inum, doc in enumerate(result["source_documents"])
-                    ]
+                    source_documents = docs2source(result["source_documents"])
                 chat_message = ChatMessage(
                     question=question,
                     response=result["result"],
