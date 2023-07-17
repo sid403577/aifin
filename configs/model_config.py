@@ -178,8 +178,9 @@ PROMPT_TEMPLATE_EXAMPLE_PREFIX = """
 
 """
 PROMPT_TEMPLATE_EXAMPLE_SUFFIX = """
+根据一下已知信息，简洁和专业的来回答用户的问题。
 已知信息：{context}
-根据上述已知信息，简洁和专业的来回答用户的问题。问题是：{question}
+问题是：{question}
 """
 
 PROMPT_TEMPLATE_EXAMPLES = [
