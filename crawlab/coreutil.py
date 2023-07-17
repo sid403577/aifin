@@ -279,10 +279,10 @@ def esBatch(docList:list):
 
 
 if __name__ == "__main__":
-    # domain = sys.argv[1]  # 域名
-    # code = sys.argv[2]  # 股票代码
-    # type = sys.argv[3]  # 增量1，全量2
-    # startPage = sys.argv[4]  # 从第几页
-    # print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
-    # eastmoney(domain, code, type, int(startPage))
-    eastmoney("search-api-web.eastmoney.com", "002594", "2", 1)
+    domain = sys.argv[1]  # 域名
+    code = sys.argv[2]  # 股票代码
+    type = sys.argv[3]  # 增量1，全量2
+    startPage = sys.argv[4]  # 从第几页
+    print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
+    eastmoney(domain, code, type, int(startPage))
+    #eastmoney("search-api-web.eastmoney.com", "002594", "2", 1)
