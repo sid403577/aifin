@@ -76,20 +76,6 @@ def add_vector_store(vs_path, embeddings, docs):
     return vector_store
 
 
-def temp_vector_store(vs_path, embeddings):
-    temp_vs_path = os.path.join(KB_ROOT_PATH, vs_path, "vector_store")
-    os.makedirs(temp_vs_path)
-    if os.path.isdir(vs_path) and "index.faiss" in os.listdir(vs_path):
-        return MyFAISS.load_local(temp_vs_path, embeddings)
-    docs = [Document(page_content="test", metadata={"source": "test", "url": "test"})]
-    return MyFAISS.from_documents(docs, embeddings)
-
-
-def temp_vector_store_rm(vs_path):
-    temp_vs_path = os.path.join(KB_ROOT_PATH, vs_path)
-    shutil.rmtree(temp_vs_path)
-
-
 def tree(filepath, ignore_dir_names=None, ignore_file_names=None):
     """返回两个列表，第一个列表为 filepath 下全部文件的完整路径, 第二个为对应的文件名"""
     if ignore_dir_names is None:
@@ -468,18 +454,15 @@ class LocalDocQA:
         elapsed = time.perf_counter() - s
         print(f"知识库搜索 结束{elapsed:0.2f} seconds len:{len(ldocs)}")
 
-        tmp_vs_path = str(uuid.uuid4())
-        vector_store = temp_vector_store(tmp_vs_path, self.embeddings)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=SENTENCE_SIZE, chunk_overlap=0)
+        docs = text_splitter.split_documents(gdocs+ldocs)
+        vector_store = MyFAISS.from_documents(docs, self.embeddings)
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
         vector_store.score_threshold = self.score_threshold
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
-        docs = text_splitter.split_documents(gdocs+ldocs)
-        vector_store.add_documents(docs)
         elapsed = time.perf_counter() - s
         print(f"本地向量化 {elapsed:0.2f} seconds len:{len(docs)}")
         result_docs = vector_store.similarity_search_with_score(query, self.top_k)
-        temp_vector_store_rm(tmp_vs_path)
         torch_gc()
         elapsed = time.perf_counter() - s
         print(f"本地向量化搜索 结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
@@ -520,19 +503,16 @@ class LocalDocQA:
         elapsed = time.perf_counter() - s
         print(f"google搜索 结束 {elapsed:0.2f} seconds len:{len(gdocs)}")
 
-        tmp_vs_path = str(uuid.uuid4())
-        vector_store = temp_vector_store(tmp_vs_path, self.embeddings)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=SENTENCE_SIZE, chunk_overlap=0)
+        docs = text_splitter.split_documents(gdocs)
+        vector_store = MyFAISS.from_documents(docs, self.embeddings)
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
         vector_store.score_threshold = self.score_threshold
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=0)
-        docs = text_splitter.split_documents(gdocs)
-        vector_store.add_documents(docs)
         elapsed = time.perf_counter() - s
         print(f"本地向量化 {elapsed:0.2f} seconds len:{len(docs)}")
 
         result_docs = vector_store.similarity_search_with_score(keywords, self.top_k)
-        temp_vector_store_rm(tmp_vs_path)
         torch_gc()
         elapsed = time.perf_counter() - s
         print(f"本地向量化搜索 结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
