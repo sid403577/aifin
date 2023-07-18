@@ -83,9 +83,17 @@ def readFromES(code:str)->list[Document]:
                 if len(items)>0:
                     for item in items:
                         data = item['_source']
-                        text = data.pop('text')
-                        doc = Document(page_content=text,
-                                       metadata=data)
+                        metadata = {"source": data['source'],
+                                    "uniqueId": data['uniqueId'],
+                                    "code": data['code'],
+                                    "url": data['url'],
+                                    "date": data['date'],
+                                    "type": data['type'],
+                                    "createTime": data['createTime'],
+                                    "abstract": data['abstract'],
+                                    "title": data['title']}
+                        doc = Document(page_content=data['text'],
+                                       metadata=metadata)
                         storageList.append(doc)
                 store(storageList,code)
                 page+=1
