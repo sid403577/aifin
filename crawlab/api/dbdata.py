@@ -30,7 +30,7 @@ def load_and_split(docs: list[Document]) -> list[Document]:
     return [doc for doc in related_docs if len(doc.page_content.strip()) > 50]
 
 
-def store(docs: list[Document]):
+def store(docs: list[Document],skip_count:int):
     docs = load_and_split(docs)
     print("进入存储阶段")
     embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
@@ -47,16 +47,17 @@ def store(docs: list[Document]):
             )
             break
         except Exception as e:
-            print(f"error,写入矢量库异常,{e}")
+            print(f"error,写入矢量库异常,{e},{skip_count}")
             count += 1
     if not obj:
-        raise Exception("写入矢量库异常")
+        print(f"error,写入矢量库异常,{skip_count}")
+        raise Exception("写入矢量库异常"+skip_count)
     print("over")
 
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 # 连接到Elasticsearch实例
-def esBatch(docList:list):
+def esBatch(docList:list,security_code:str):
     es = Elasticsearch(['8.217.110.233:9200'])
     #es = Elasticsearch("http://192.168.1.1:9200", http_auth=('username', 'password'), timeout=20)
     index_name = 'aifin'
@@ -78,8 +79,9 @@ def esBatch(docList:list):
             bulk(es, actions)
             break
         except Exception as e:
-            print(f"error,写入矢量库异常,{e}")
+            print(f"error,写入es异常,{e}")
             count += 1
+    print(f"success,写入成功."+security_code)
     bulk(es, actions)
 
 
@@ -99,6 +101,7 @@ def transEs(security_code:str):
     page_number = 1
     # 计算要跳过的记录数量
     skip_count = (page_number - 1) * page_size
+    # skip_count = 2
     has_more_results = True
     while has_more_results:
         query = f"""
@@ -117,11 +120,12 @@ def transEs(security_code:str):
             FROM INFO_RE_BASINFOCOM a
             JOIN INFO_RE_CONTENTCOM b ON a.INFOCODE = b.INFOCODE
             WHERE a.SECURITYCODE = '{security_code}'
+            and a.PUBLISHDATE > '2020-01-01 00:00:00'
             ORDER BY a.PUBLISHDATE DESC
             OFFSET {skip_count} ROWS FETCH NEXT {page_size} ROWS ONLY
             """
         cursor.execute(query)
-        results = cursor.fetchmany(500)  # Retrieve 500 records at a time
+        results = cursor.fetchall()  # Retrieve 500 records at a time
 
         if not results:
             has_more_results = False
@@ -129,6 +133,9 @@ def transEs(security_code:str):
         else:
             page_number = page_number+1
             skip_count = (page_number - 1) * page_size
+            # if skip_count == 1:
+            #     break;
+            # skip_count = 1
         storageList: list[Document] = []
         esDocList: list = []
         for row in results:
@@ -157,10 +164,10 @@ def transEs(security_code:str):
             esDocList.append(es_doc)
 
         if len(storageList) > 0:
-            store(storageList)
+            store(storageList,skip_count)
             # 存入es库
-        if len(esDocList) > 0:
-            esBatch(esDocList)
+        # if len(esDocList) > 0:
+        #     esBatch(esDocList,security_code)
 
     # Close the connections
     cursor.close()
@@ -170,8 +177,7 @@ def transEs(security_code:str):
 
 
 if __name__ == '__main__':
-    security_code = ['002594',
-		'600887',
+    security_code = [
 		'300750',
 		'002518',
 		'600225',
