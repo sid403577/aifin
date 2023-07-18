@@ -7,8 +7,8 @@ import torch
 from elasticsearch import Elasticsearch
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import FAISS
 
-from vectorstores import MyFAISS
 from langchain.docstore.document import Document
 embedding_model_dict = {
     "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
@@ -32,9 +32,9 @@ def temp_vector_store(vs_path, embeddings):
     temp_vs_path = os.path.join(KB_ROOT_PATH, vs_path, "vector_store")
     os.makedirs(temp_vs_path)
     if os.path.isdir(vs_path) and "index.faiss" in os.listdir(vs_path):
-        return MyFAISS.load_local(temp_vs_path, embeddings)
+        return FAISS.load_local(temp_vs_path, embeddings)
     docs = [Document(page_content="test", metadata={"source": "test", "url": "test"})]
-    return MyFAISS.from_documents(docs, embeddings)
+    return FAISS.from_documents(docs, embeddings)
 
 def store(docs:list[Document]):
     embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
