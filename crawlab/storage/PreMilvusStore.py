@@ -60,7 +60,7 @@ def readFromES(code:str)->list[Document]:
     index_name = 'aifin'
     if es.indices.exists(index=index_name):
         page = 0
-        size = 500
+        size = 200
         while True:
             print(f"page:{page}")
             query = {
