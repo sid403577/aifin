@@ -208,6 +208,20 @@ def search_result2docs(search_results):
     return docs
 
 
+def company(query, chat_history=[]):
+    company_name = ""
+    for i, (old_query, response) in enumerate(chat_history):
+        if old_query is None:
+            continue
+        for company in COMPANYS:
+            if company in old_query:
+                company_name = company
+    for company in COMPANYS:
+        if company in query:
+            company_name = company
+    return company_name
+
+
 class LocalDocQA:
     llm: BaseAnswer = None
     embeddings: object = None
@@ -314,21 +328,10 @@ class LocalDocQA:
             return None
 
     def question_generator(self, query, chat_history=[], prompt_template=CONDENSE_QUESTION_PROMPT, history_len=LLM_HISTORY_LEN):
+        company_name = company(query, chat_history)
         if chat_history:
-            chat_history = chat_history[-history_len:]
-
-            last_company = ""
-            for i, (old_query, response) in enumerate(chat_history):
-                if old_query is None:
-                    continue
-                for company in COMPANYS:
-                    if company in old_query:
-                        last_company = company
-            for company in COMPANYS:
-                if company in query:
-                    last_company = company
-            if last_company not in query:
-                return last_company + query
+            pass
+            # chat_history = chat_history[-history_len:]
             # buffer = ""
             # for i, (old_query, response) in enumerate(chat_history):
             #     if old_query is None:
@@ -343,19 +346,27 @@ class LocalDocQA:
             # print(f"question prompt {prompt}")
             # print(f"question answer {query} =====> {resp}")
             # return resp
-        return query
+        if company_name not in query:
+            return company_name + query, company_name
+        return query, company_name
 
     def question_generator_keywords(self, query, chat_history=[]):
-        resp = self.question_generator(query, chat_history, prompt_template=CONDENSE_QUESTION_PROMPT_KEYWORDS, history_len=LLM_HISTORY_LEN)
+        resp, company_name = self.question_generator(query, chat_history, prompt_template=CONDENSE_QUESTION_PROMPT_KEYWORDS, history_len=LLM_HISTORY_LEN)
         question, keywords = extract_question_and_keywords(resp)
         if question or keywords:
             print(f"extract question:{question} keywords:{keywords}")
-            return question, keywords
+            return question, keywords, company_name
         print(f"resp: {resp}")
-        return resp, resp
+        return resp, resp, company_name
 
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
-        question, keywords = self.question_generator_keywords(query, chat_history)
+        question, keywords, company_name = self.question_generator_keywords(query, chat_history)
+        if company_name != "":
+            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
+            if has_vector_store(new_vs_path):
+                vs_path = new_vs_path
+        print("collection name", vs_path)
+
         vector_store = load_vector_store(vs_path, self.embeddings)
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
@@ -437,7 +448,12 @@ class LocalDocQA:
             描述：获取知识库和google搜索的内容集合
             knowledge_ratio：知识库占比（0-1）
         """
-        question, keywords = self.question_generator_keywords(query, chat_history)
+        question, keywords, company_name = self.question_generator_keywords(query, chat_history)
+        if company_name != "":
+            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
+            if has_vector_store(new_vs_path):
+                vs_path = new_vs_path
+        print("collection name", vs_path)
         s = time.perf_counter()
         # 谷歌搜索
         results = google_search(keywords, self.top_k)
