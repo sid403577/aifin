@@ -76,23 +76,23 @@ def readFromES(code:str)->list[Document]:
             items = allDoc['hits']['hits']
             #print([i['_source'] for i in items])
             length = len(items)
-            print(f"length：{length}")
+            print(f"length：{length}，items：{items}")
             if length>0:
                 print(f"length>0")
                 storageList: list[Document] = []
                 if len(items)>0:
                     for item in items:
                         data = item['_source']
-                        metadata = {"source": data['source'],
-                                    "uniqueId": data['uniqueId'],
-                                    "code": data['code'],
-                                    "url": data['url'],
-                                    "date": data['date'],
-                                    "type": data['type'],
-                                    "createTime": data['createTime'],
-                                    "abstract": data['abstract'],
-                                    "title": data['title']}
-                        doc = Document(page_content=data['text'],
+                        metadata = {"source": '' if ('source' not in data or not data['source']) else data['source'],
+                                    "uniqueId": '' if ('uniqueId' not in data or not data['uniqueId']) else data['uniqueId'],
+                                    "code": '' if ('code' not in data or not data['code']) else data['code'],
+                                    "url": '' if ('url' not in data or not data['url']) else data['url'],
+                                    "date": '' if ('date' not in data or not data['date']) else data['date'],
+                                    "type": '' if ('type' not in data or not data['type']) else data['type'],
+                                    "createTime": '' if ('createTime' not in data or not data['createTime']) else data['createTime'],
+                                    "abstract": '' if ('abstract' not in data or not data['abstract']) else data['abstract'],
+                                    "title": '' if ('title' not in data or not data['title']) else data['title']}
+                        doc = Document(page_content='' if ('text' not in data or not data['text']) else data['text'],
                                        metadata=metadata)
                         storageList.append(doc)
                 store(storageList,code)
