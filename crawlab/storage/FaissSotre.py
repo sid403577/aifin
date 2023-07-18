@@ -10,15 +10,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 
 from langchain.docstore.document import Document
-embedding_model_dict = {
-    "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
-    "ernie-base": "nghuyong/ernie-3.0-base-zh",
-    "text2vec-base": "shibing624/text2vec-base-chinese",
-    "text2vec": "/data/aifin/huggingface/GanymedeNil/text2vec-large-chinese",
-    "m3e-small": "moka-ai/m3e-small",
-    "m3e-base": "moka-ai/m3e-base",
-}
-EMBEDDING_MODEL = "text2vec"
+
 EMBEDDING_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
 # 知识检索内容相关度 Score, 数值范围约为0-1100，如果为0，则不生效，经测试设置为小于500时，匹配结果更精准
@@ -37,7 +29,7 @@ def temp_vector_store(vs_path, embeddings):
     return FAISS.from_documents(docs, embeddings)
 
 def store(docs:list[Document]):
-    embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
+    embeddings = HuggingFaceEmbeddings(model_name="/data/aifin/huggingface/GanymedeNil/text2vec-large-chinese",
                                        model_kwargs={'device': EMBEDDING_DEVICE})
     tmp_vs_path = str(uuid.uuid4())
     vector_store = temp_vector_store(tmp_vs_path, embeddings)
