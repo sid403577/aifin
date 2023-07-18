@@ -14,7 +14,7 @@ embedding_model_dict = {
     "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
     "ernie-base": "nghuyong/ernie-3.0-base-zh",
     "text2vec-base": "shibing624/text2vec-base-chinese",
-    "text2vec": "/root/model/text2vec-large-chinese",
+    "text2vec": "/data/huggingface/GanymedeNil/text2vec-large-chinese",
     "m3e-small": "moka-ai/m3e-small",
     "m3e-base": "moka-ai/m3e-base",
 }
@@ -54,27 +54,39 @@ def readFromES(code:str)->list[Document]:
     #es = Elasticsearch(['172.28.84.188:9200'])
     index_name = 'aifin'
     if es.indices.exists(index=index_name):
-        query = {
-            "query": {
-                "match": {
-                    "code": code
-                }
+        page = 0
+        size = 500
+        while True:
+            print(f"page:{page}")
+            query = {
+                "query": {
+                    "match": {
+                        "code": code
+                    }
+                },
+                "from":page*size, # 分页开始的位置，默认为0
+                "size":size,# 期望获取的文档总数
             }
-        }
-        allDoc = es.search(index=index_name, body=query)
-        items = allDoc['hits']['hits']
-        #print([i['_source'] for i in items])
-        print(len(items))
-        storageList: list[Document] = []
-        if len(items)>0:
-            for item in items:
-                data = item['_source']
-                text = data.pop('text')
-                doc = Document(page_content=text,
-                               metadata=data)
-                storageList.append(doc)
-        return storageList
+            allDoc = es.search(index=index_name, body=query)
+            items = allDoc['hits']['hits']
+            #print([i['_source'] for i in items])
+            length = len(items)
+            print(f"length：{length}")
+            if length>0:
+                print(f"length>0")
+                storageList: list[Document] = []
+                if len(items)>0:
+                    for item in items:
+                        data = item['_source']
+                        text = data.pop('text')
+                        doc = Document(page_content=text,
+                                       metadata=data)
+                        storageList.append(doc)
+                store(storageList)
+                page+=1
+            else:
+                print(f"length=0")
+                break
 
 if __name__ == '__main__':
-    storageList = readFromES('002594')
-    store(storageList)
+    readFromES('002594')
