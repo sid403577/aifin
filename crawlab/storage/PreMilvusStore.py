@@ -28,7 +28,7 @@ def load_and_split(docs: list[Document]) -> list[Document]:
     return [doc for doc in related_docs if len(doc.page_content.strip()) > 50]
 
 
-def store(docs: list[Document]):
+def store(docs: list[Document],code:str):
     docs = load_and_split(docs)
     print("进入存储阶段")
     embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
@@ -41,7 +41,7 @@ def store(docs: list[Document]):
                 docs,
                 embeddings,
                 connection_args={"host": "8.217.52.63", "port": "19530"},
-                collection_name="aifin",
+                collection_name=f"aifin_{code}",
             )
             break
         except Exception as e:
@@ -87,7 +87,7 @@ def readFromES(code:str)->list[Document]:
                         doc = Document(page_content=text,
                                        metadata=data)
                         storageList.append(doc)
-                store(storageList)
+                store(storageList,code)
                 page+=1
             else:
                 print(f"length=0")
