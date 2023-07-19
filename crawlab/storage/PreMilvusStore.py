@@ -1,4 +1,5 @@
 import sys
+import uuid
 
 ###################### 存储类 ###############################################
 
@@ -12,8 +13,8 @@ embedding_model_dict = {
     "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
     "ernie-base": "nghuyong/ernie-3.0-base-zh",
     "text2vec-base": "shibing624/text2vec-base-chinese",
-    "text2vec": "/data/aifin/huggingface/GanymedeNil/text2vec-large-chinese",
-    #"text2vec": "/root/model/text2vec-large-chinese",
+    #"text2vec": "/data/aifin/huggingface/GanymedeNil/text2vec-large-chinese",
+    "text2vec": "/root/model/text2vec-large-chinese",
     "m3e-small": "moka-ai/m3e-small",
     "m3e-base": "moka-ai/m3e-base",
 }
@@ -85,7 +86,7 @@ def readFromES(code:str)->list[Document]:
                     for item in items:
                         data = item['_source']
                         metadata = {"source": '' if ('source' not in data or not data['source']) else data['source'],
-                                    "uniqueId": '' if ('uniqueId' not in data or not data['uniqueId']) else data['uniqueId'],
+                                    "uniqueId": uuid.uuid1() if ('uniqueId' not in data or not data['uniqueId']) else data['uniqueId'],
                                     "code": '' if ('code' not in data or not data['code']) else data['code'],
                                     "url": '' if ('url' not in data or not data['url']) else data['url'],
                                     "date": '' if ('date' not in data or not data['date']) else data['date'],
