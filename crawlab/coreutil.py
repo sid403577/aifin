@@ -157,7 +157,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                 doc = Document(page_content=text,metadata=metadata)
                 storageList.append(doc)
                 # 写入到es
-                es_doc = {'text': content}
+                es_doc = {'text': text}
                 es_doc.update(metadata)
                 esDocList.append(es_doc)
 
@@ -169,7 +169,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                     f"获取第【{pageIndex}】页的第【{i}】条数据,title:{data[i]['title']},url:{data[i]['url']}时异常，异常信息：{e}")
         # 存入矢量库
         if len(storageList) > 0:
-            store(storageList)
+            store(storageList,code)
         # 存入es库
         if len(esDocList) > 0:
             esBatch(esDocList)
@@ -221,7 +221,7 @@ def load_and_split(docs: list[Document]) -> list[Document]:
     return [doc for doc in related_docs if len(doc.page_content.strip()) > 20]
 
 
-def store(docs: list[Document]):
+def store(docs: list[Document],code:str):
     docs = load_and_split(docs)
     print("进入存储阶段")
     embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
@@ -234,7 +234,7 @@ def store(docs: list[Document]):
                 docs,
                 embeddings,
                 connection_args={"host": "8.217.52.63", "port": "19530"},
-                collection_name="aifin",
+                collection_name=f"aifin_{code}",
             )
             break
         except Exception as e:
