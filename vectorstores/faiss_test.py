@@ -3,8 +3,11 @@ from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 
+import sys
+sys.path.append('..')
 from configs.model_config import KB_ROOT_PATH
 from vectorstores import MyFAISS
+
 import os
 os.environ["OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc" #当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
 os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
