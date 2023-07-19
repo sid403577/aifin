@@ -29,7 +29,6 @@ def save_faiss(code, embeddings, chunk_size=100, debug=True):
         for i, row in enumerate(csv_reader):
             if row['code'] == code:
                 text = row['abstract']
-                print(type(text))
                 if debug:
                     print(f"source: {len(text)}")
                     print(f"{text}")
