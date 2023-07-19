@@ -53,7 +53,7 @@ class MyFAISS(FAISS, VectorStore):
         id_set = set()
         store_len = len(self.index_to_docstore_id)
         rearrange_id_list = False
-        key = "url"
+        key = "uniqueId"
         for j, i in enumerate(indices[0]):
             if i == -1 or 0 < self.score_threshold < scores[0][j]:
                 # This happens when not enough docs are returned.
