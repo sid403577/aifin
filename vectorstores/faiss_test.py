@@ -62,4 +62,5 @@ if __name__ == "__main__":
     }
 
     for code, name in stockMap.items():
+        print(f"=========== {name}")
         save_faiss(code, embeddings, chunk_size=100, debug=True)
