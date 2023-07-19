@@ -103,7 +103,7 @@ llm_model_dict = {
         "pretrained_model_name": "chatglm2-6b",
         "local_model_path": None,
         "provides": "FastChatOpenAILLM",  # 使用fastchat api时，需保证"provides"为"FastChatOpenAILLM"
-        "api_base_url": "http://43.163.215.8:8000/v1"  # "name"修改为fastchat服务中的"api_base_url"
+        "api_base_url": "http://43.163.242.102:8000/v1"  # "name"修改为fastchat服务中的"api_base_url"
     },
 
     # 通过 fastchat 调用的模型请参考如下格式
@@ -372,7 +372,7 @@ LLM_HISTORY_LEN = 3
 VECTOR_SEARCH_TOP_K = 10
 
 # 知识检索内容相关度 Score, 数值范围约为0-1100，如果为0，则不生效，经测试设置为小于500时，匹配结果更精准
-VECTOR_SEARCH_SCORE_THRESHOLD = 0
+VECTOR_SEARCH_SCORE_THRESHOLD = 800
 
 NLTK_DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "nltk_data")
 
