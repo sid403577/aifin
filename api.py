@@ -430,7 +430,7 @@ def docs2source(docs):
     rdocs = []
     inum = 1
     for doc in docs:
-        if doc.metadata.get("url") in url_set:
+        if doc.metadata.get("uniqueId") in url_set:
             continue
         rdocs.append(json.dumps(
                             {
