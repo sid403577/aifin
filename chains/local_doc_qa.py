@@ -529,7 +529,7 @@ class LocalDocQA:
         print(f"AI结束 {elapsed:0.2f} seconds")
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        question, keywords = self.question_generator_keywords(query, chat_history)
+        question, keywords, company_name = self.question_generator_keywords(query, chat_history)
         s = time.perf_counter()
         results = google_search(keywords, self.top_k)
         gdocs = search_result2docs(results)
