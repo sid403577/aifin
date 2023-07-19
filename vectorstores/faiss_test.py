@@ -1,4 +1,6 @@
 import csv
+import uuid
+
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
@@ -40,7 +42,18 @@ def save_faiss(code, embeddings, chunk_size=100, debug=True):
                 if debug:
                     for t in texts:
                         print(f"splitter {len(texts)} ===: {t}")
-                docs += [Document(page_content=t) for t in texts]
+                metadata = {"source": '' if ('source' not in row or not row['source']) else row['source'],
+                            "uniqueId": uuid.uuid1() if ('uniqueId' not in row or not row['uniqueId']) else row[
+                                'uniqueId'],
+                            "code": '' if ('code' not in row or not row['code']) else row['code'],
+                            "url": '' if ('url' not in row or not row['url']) else row['url'],
+                            "date": '' if ('date' not in row or not row['date']) else row['date'],
+                            "type": '' if ('type' not in row or not row['type']) else row['type'],
+                            "createTime": '' if ('createTime' not in row or not row['createTime']) else row[
+                                'createTime'],
+                            "abstract": '' if ('abstract' not in row or not row['abstract']) else row['abstract'],
+                            "title": '' if ('title' not in row or not row['title']) else row['title']}
+                docs += [Document(page_content=t, metadata=metadata) for t in texts]
                 with open(file_path, "wb") as f:
                     f.write(text.encode())
                     f.flush()
