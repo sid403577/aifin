@@ -465,6 +465,8 @@ async def chat_llm(websocket: WebSocket):
             for result, history in local_doc_qa.get_search_result_google_answer(query=question,
                                                                                 chat_history=history,
                                                                                 streaming=True):
+                if result["source_documents"] is None:
+                    break
                 if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
                     source_documents = docs2source(result["source_documents"])
@@ -486,6 +488,8 @@ async def chat_llm(websocket: WebSocket):
             for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
                     query=question, vs_path="aifin", chat_history=history, streaming=True,
                     knowledge_ratio=0.5):
+                if result["source_documents"] is None:
+                    break
                 if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
                     source_documents = docs2source(result["source_documents"])
@@ -506,6 +510,8 @@ async def chat_llm(websocket: WebSocket):
         elif tp == 4:
             for result, history in local_doc_qa.get_knowledge_based_answer(
                     query=question, vs_path="aifin", chat_history=history, streaming=True):
+                if result["source_documents"] is None:
+                    break
                 if source_documents is None:
                     await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
                     source_documents = docs2source(result["source_documents"])
