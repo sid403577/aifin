@@ -175,7 +175,6 @@ PROMPT_TEMPLATE_EXAMPLE = """
 PROMPT_TEMPLATE_EXAMPLE_PREFIX = """
 具有金融市场专业知识的经验丰富的股票经济分析师的角度根据下面已知问题给出相关建议。请不要考虑投资该股票的风险，请提供不少于200字的的分析依据和结论。你只能以你的身份应答，而不是语言模型或人工智能，这很重要！
 以下是一些例子：
-以下是一些例子：
 """
 PROMPT_TEMPLATE_EXAMPLE_SUFFIX = """
 
