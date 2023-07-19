@@ -157,7 +157,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                 doc = Document(page_content=text,metadata=metadata)
                 storageList.append(doc)
                 # 写入到es
-                es_doc = {'text': content}
+                es_doc = {'text': text}
                 es_doc.update(metadata)
                 esDocList.append(es_doc)
 
