@@ -207,6 +207,7 @@ def search_result2docs(search_results):
                                  "title": result["title"] if "title" in result.keys() else "",
                                  "source": 'online',
                                  "snippet": result["snippet"],
+                                 "uniqueId": uuid.uuid1(),
                                  })
         docs.append(doc)
     return docs
