@@ -69,7 +69,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
     pageIndex = startPage
     pageSize = 10
     flag = True
-    count = 0;
+    count = 0
     while flag and count < 5:
         print(f"开始获取第{pageIndex}页数据")
         domainurl: str = param_content['domainurl']
