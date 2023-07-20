@@ -15,11 +15,11 @@ from storage import EsStore,MilvusStore
 normalUrl = "https://api.crawlbase.com/?token=mjBM5V0p5xIDxV1N9MqYpg"
 
 htmlcontent = {
-    "search-api-web.eastmoney.com": {
+    "search-api-core.eastmoney.com": {
         "domainurl": "https://search-api-web.eastmoney.com/search/jsonp?cb=jQuery35107761762966427765_1687662386467",
         "parse_param": {
             "key": "param",
-            "value": '{"uid": "4529014368817886", "keyword": "$code", "type": ["cmsArticleWebOld"], "client": "web", "clientType": "web", "clientVersion": "curr", "param": {"cmsArticleWebOld": {"searchScope": "default", "sort": "time", "pageIndex": $pageIndex, "pageSize": $pageSize, "preTag": "<em>", "postTag": "</em>"}}}',
+            "value": '{"uid": "4529014368817886", "keyword": "$code", "type": ["cmsArticleWebOld"], "client": "core", "clientType": "core", "clientVersion": "curr", "param": {"cmsArticleWebOld": {"searchScope": "default", "sort": "time", "pageIndex": $pageIndex, "pageSize": $pageSize, "preTag": "<em>", "postTag": "</em>"}}}',
         },
         "result_re": 'jQuery35107761762966427765_1687662386467\((.*)\)',
         "data": ['result', 'cmsArticleWebOld'],
@@ -32,7 +32,15 @@ htmlcontent = {
     }
 }
 
-
+def get_text(url, text_re: dict):
+    soup = BeautifulSoup(download_page(url))
+    all_comments = soup.find_all(text_re['element'], text_re['attr'])
+    if all_comments and len(all_comments) > 0:
+        text1 = all_comments[0]
+        con = text1.get_text()  # 只提取文字
+    else:
+        con = soup.get_text()
+    return con
 def download_page(url, para=None):
     crawUrl = f"{normalUrl}&url={urllib.parse.quote(url)}"
     if para:
@@ -179,15 +187,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
     print(f"处理完成，从{startPage}-{pageIndex}页，一共处理{total}条数据")
 
 
-def get_text(url, text_re: dict):
-    soup = BeautifulSoup(download_page(url))
-    all_comments = soup.find_all(text_re['element'], text_re['attr'])
-    if all_comments and len(all_comments) > 0:
-        text1 = all_comments[0]
-        con = text1.get_text()  # 只提取文字
-    else:
-        con = soup.get_text()
-    return con
+
 
 
 
@@ -201,4 +201,4 @@ if __name__ == "__main__":
     startPage = sys.argv[4]  # 从第几页
     print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
     eastmoney(domain, code, type, int(startPage))
-    #eastmoney("search-api-web.eastmoney.com", "002594", "2", 1)
+    #eastmoney("search-api-core.eastmoney.com", "002594", "2", 1)

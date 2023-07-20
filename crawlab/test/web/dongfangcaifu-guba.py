@@ -38,9 +38,9 @@ def eastmoney(code: str, type: str):  # 两个参数分别表示开始读取与�
                 "type": [
                     "gubaArticleWeb"
                 ],
-                "client": "web",
+                "client": "core",
                 "clientVersion": "curr",
-                "clientType": "web",
+                "clientType": "core",
                 "param": {
                     "gubaArticleWeb": {
                         "pageSize": pageSize,
@@ -83,7 +83,7 @@ def eastmoney(code: str, type: str):  # 两个参数分别表示开始读取与�
                     # 数据处理
                     print(f"获取第{total}条数据的url内容：{link}")
                     text = get_text(data[i]['url'])
-                    source = "search-api-web.eastmoney.com"
+                    source = "search-api-core.eastmoney.com"
                     url = data[i]['url']
                     title = data[i]['title']
                     createTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')

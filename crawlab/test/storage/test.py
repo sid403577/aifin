@@ -15,7 +15,7 @@ milvus.connect(host='localhost', port='19530')
 # 定义集合名称和字段名称
 collection_name = 'aifin_600737'
 field_name = 'source'
-field_value = 'web'
+field_value = 'core'
 
 # 查询满足条件的向量ID
 query_vector = [field_value]  # 将字段值转为向量，根据具体情况进行转换

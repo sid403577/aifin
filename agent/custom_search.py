@@ -21,7 +21,7 @@ class DeepSearch:
             "Accept": "application/json",
             "X-BingApis-SDK": "true",
             "X-RapidAPI-Key": RapidAPIKey,
-            "X-RapidAPI-Host": "bing-web-search1.p.rapidapi.com"
+            "X-RapidAPI-Host": "bing-core-search1.p.rapidapi.com"
         }
 
         response = requests.get(url, headers=headers, params=querystring)
