@@ -9,7 +9,8 @@ import urllib.parse
 import chardet
 import requests
 from bs4 import BeautifulSoup
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from storage import EsStore,MilvusStore
+
 
 normalUrl = "https://api.crawlbase.com/?token=mjBM5V0p5xIDxV1N9MqYpg"
 
@@ -102,8 +103,7 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
             data = data[pre]
 
         print(f"获取第{pageIndex}页的数据，大小为{len(data)}")
-        storageList: list[Document] = []
-        esDocList: list = []
+        storageList: list = []
         for i in range(0, len(data)):
             print("\n---------------------")
             try:
@@ -152,14 +152,9 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
                             "type": "东方财富-资讯",
                             "createTime": createTime,
                             "abstract": abstract,
-                            "title": title}
-                # 写入矢量库
-                doc = Document(page_content=text,metadata=metadata)
-                storageList.append(doc)
-                # 写入到es
-                es_doc = {'text': text}
-                es_doc.update(metadata)
-                esDocList.append(es_doc)
+                            "title": title,
+                            "text":text}
+                storageList.append(metadata)
 
                 print(f"第{total}条数据处理完成")
                 print("\n")
@@ -167,12 +162,12 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
             except Exception as e:
                 print(
                     f"获取第【{pageIndex}】页的第【{i}】条数据,title:{data[i]['title']},url:{data[i]['url']}时异常，异常信息：{e}")
-        # 存入矢量库
+
         if len(storageList) > 0:
-            store(storageList,code)
-        # 存入es库
-        if len(esDocList) > 0:
-            esBatch(esDocList)
+            # 存入矢量库
+            MilvusStore.storeData(storageList,f"aifin_{code}","8.217.52.63:19530")
+            # 存入es库
+            EsStore.storeData(storageList, f"aifin", "8.217.110.233:9200")
 
         print(f"第{pageIndex}页数据处理完成")
         print("\n")
@@ -195,87 +190,8 @@ def get_text(url, text_re: dict):
     return con
 
 
-###################### 存储类 ###############################################
-
-import torch
-from langchain.docstore.document import Document
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Milvus
-
-embedding_model_dict = {
-    "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
-    "ernie-base": "nghuyong/ernie-3.0-base-zh",
-    "text2vec-base": "shibing624/text2vec-base-chinese",
-    "text2vec": "/root/model/text2vec-large-chinese",
-    "m3e-small": "moka-ai/m3e-small",
-    "m3e-base": "moka-ai/m3e-base",
-}
-EMBEDDING_MODEL = "text2vec"
-EMBEDDING_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
 
-def load_and_split(docs: list[Document]) -> list[Document]:
-    """Load documents and split into chunks."""
-    _text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
-    related_docs = _text_splitter.split_documents(docs)
-    return [doc for doc in related_docs if len(doc.page_content.strip()) > 20]
-
-
-def store(docs: list[Document],code:str):
-    docs = load_and_split(docs)
-    print("进入存储阶段")
-    embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
-                                       model_kwargs={'device': EMBEDDING_DEVICE})
-    count = 0
-    obj = None
-    while True and count < 3:
-        try:
-            obj = Milvus.from_documents(
-                docs,
-                embeddings,
-                connection_args={"host": "8.217.52.63", "port": "19530"},
-                collection_name=f"aifin_{code}",
-            )
-            break
-        except Exception as e:
-            print(f"error,写入矢量库异常,{e}")
-            count += 1
-    if not obj:
-        raise Exception("写入矢量库异常")
-    print(f"写入矢量库【aifin_{code}】over")
-
-
-###################### es操作 ###############################################
-from elasticsearch import Elasticsearch
-from elasticsearch.helpers import bulk
-# 连接到Elasticsearch实例
-def esBatch(docList:list):
-    es = Elasticsearch(['172.28.84.188:9200'])
-    #es = Elasticsearch("http://192.168.1.1:9200", http_auth=('username', 'password'), timeout=20)
-    index_name = 'aifin'
-    if not es.indices.exists(index=index_name):
-        es.indices.create(index=index_name)
-    # 定义要插入的文档数据
-    # 使用bulk()方法批量插入文档
-    actions = [
-        {
-            '_index': index_name,
-            '_source': doc
-        }
-        for doc in docList
-    ]
-    count = 0
-    esObj = None
-    while True and count < 3:
-        try:
-            esObj = bulk(es, actions)
-            break
-        except Exception as e:
-            print(f"error,写入ES库异常,{e}")
-            count += 1
-    if not esObj:
-        raise Exception("写入ES库异常")
-    print(f"写入ES【{index_name}】库over")
 
 
 if __name__ == "__main__":
