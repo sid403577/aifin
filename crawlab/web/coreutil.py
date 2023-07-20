@@ -242,7 +242,7 @@ def store(docs: list[Document],code:str):
             count += 1
     if not obj:
         raise Exception("写入矢量库异常")
-    print("写入矢量库over")
+    print(f"写入矢量库【aifin_{code}】over")
 
 
 ###################### es操作 ###############################################
@@ -275,7 +275,7 @@ def esBatch(docList:list):
             count += 1
     if not esObj:
         raise Exception("写入ES库异常")
-    print("写入ES库over")
+    print(f"写入ES【{index_name}】库over")
 
 
 if __name__ == "__main__":
