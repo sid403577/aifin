@@ -15,7 +15,7 @@ from storage import EsStore,MilvusStore
 normalUrl = "https://api.crawlbase.com/?token=mjBM5V0p5xIDxV1N9MqYpg"
 
 htmlcontent = {
-    "search-api-core.eastmoney.com": {
+    "search-api-web.eastmoney.com": {
         "domainurl": "https://search-api-web.eastmoney.com/search/jsonp?cb=jQuery35107761762966427765_1687662386467",
         "parse_param": {
             "key": "param",
