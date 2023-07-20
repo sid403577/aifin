@@ -17,10 +17,10 @@ os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
 
 def save_faiss(code, embeddings, chunk_size=100, debug=True):
     splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
-    content_path = os.path.join(KB_ROOT_PATH, code, "content")
+    content_path = os.path.join(KB_ROOT_PATH, "aifin_"+code, "content")
     if not os.path.exists(content_path):
         os.makedirs(content_path)
-    vs_path = os.path.join(KB_ROOT_PATH, code, "vector_store")
+    vs_path = os.path.join(KB_ROOT_PATH, "aifin_"+code, "vector_store")
     if not os.path.exists(vs_path):
         os.makedirs(vs_path)
     docs = []

@@ -37,22 +37,26 @@ HuggingFaceEmbeddings.__hash__ = _embeddings_hash
 
 
 def has_vector_store(vs_path) -> bool:
+    directories = vs_path.split("/")
     if MILVUS_HOST:
-        directories = vs_path.split("/")
         if len(directories) > 1:
             vs_path = directories[-2]
         return MyMilvus.has_collection(vs_path)
+    if len(directories) == 1:
+        vs_path = os.path.join(KB_ROOT_PATH, vs_path, "vector_store")
     return vs_path is not None and os.path.exists(vs_path) and "index.faiss" in os.listdir(vs_path)
 
 
 # will keep CACHED_VS_NUM of vector store caches
 @lru_cache(CACHED_VS_NUM)
 def load_vector_store(vs_path, embeddings):
+    directories = vs_path.split("/")
     if MILVUS_HOST:
-        directories = vs_path.split("/")
         if len(directories) > 1:
             vs_path = directories[-2]
         return MyMilvus(embeddings, vs_path)
+    if len(directories) == 1:
+        vs_path = os.path.join(KB_ROOT_PATH, vs_path, "vector_store")
     return MyFAISS.load_local(vs_path, embeddings)
 
 
@@ -203,6 +207,7 @@ def search_result2docs(search_results):
                                  "title": result["title"] if "title" in result.keys() else "",
                                  "source": 'online',
                                  "snippet": result["snippet"],
+                                 "uniqueId": uuid.uuid1(),
                                  })
         docs.append(doc)
     return docs
@@ -365,13 +370,21 @@ class LocalDocQA:
             new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
+        if not has_vector_store(vs_path):
+            response = {"query": query,
+                        "result": "知识库不存在, 请联系技术支持人员",
+                        "source_documents": []}
+            return response, chat_history
         print("collection name", vs_path)
 
+        s = time.perf_counter()
         vector_store = load_vector_store(vs_path, self.embeddings)
         vector_store.chunk_size = self.chunk_size
         vector_store.chunk_conent = self.chunk_conent
         vector_store.score_threshold = self.score_threshold
         related_docs_with_score = vector_store.similarity_search_with_score(keywords, k=self.top_k)
+        elapsed = time.perf_counter() - s
+        print(f"知识库搜索 结束{elapsed:0.2f} seconds len:{len(related_docs_with_score)}")
         torch_gc()
         if streaming:
             response = {"query": query,
@@ -453,6 +466,11 @@ class LocalDocQA:
             new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
+        if not has_vector_store(vs_path):
+            response = {"query": query,
+                        "result": "知识库不存在, 请联系技术支持人员",
+                        "source_documents": []}
+            return response, chat_history
         print("collection name", vs_path)
         s = time.perf_counter()
         # 谷歌搜索
@@ -483,19 +501,18 @@ class LocalDocQA:
         elapsed = time.perf_counter() - s
         print(f"本地向量化搜索 结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
 
+        if result_docs is None or len(result_docs) == 0:
+            response = {"query": query,
+                        "result": "无法找到相关知识",
+                        "source_documents": []}
+            return response, chat_history
+
         if streaming:
             response = {"query": query,
                         "result": "",
                         "source_documents": result_docs
                         }
             yield response, chat_history
-
-        if result_docs is None or len(result_docs) == 0:
-            response = {"query": query,
-                        "result": "无法找到相关知识",
-                        "source_documents": result_docs}
-            yield response, chat_history
-            return
 
         # prompt = generate_prompt(result_docs, question)
         prompt = generate_few_shot_prompt(result_docs, question, self.embeddings)
@@ -512,7 +529,7 @@ class LocalDocQA:
         print(f"AI结束 {elapsed:0.2f} seconds")
 
     def get_search_result_google_answer(self, query, chat_history=[], streaming: bool = STREAMING):
-        question, keywords = self.question_generator_keywords(query, chat_history)
+        question, keywords, company_name = self.question_generator_keywords(query, chat_history)
         s = time.perf_counter()
         results = google_search(keywords, self.top_k)
         gdocs = search_result2docs(results)
