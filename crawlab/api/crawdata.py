@@ -6,7 +6,6 @@ import sys
 import requests
 from bs4 import BeautifulSoup
 
-
 marketMap = {
     32: "深圳证券交易所",
     16: "上海证券交易所",
@@ -22,7 +21,7 @@ stockMap = {
     "603259": "药明康德",
     "000063": "中兴通讯",
     "600737": "中粮糖业",
-    "300887":"谱尼测试",
+    "300887": "谱尼测试",
 }
 
 
@@ -35,7 +34,7 @@ def buildMarketdata(stock: str, market: int):
         url = f"https://b2b-news.10jqka.com.cn/hxcota/market/stocks/v2/list?stock={stock}&market={market}&type=1&accessKey=74f9abd518ab0970&page={page}&pageSize=250"
         print(f"url:{url}")
         count = 0
-        response =None
+        response = None
         while True and count < 3:
             try:
                 response = requests.get(url)
@@ -128,7 +127,7 @@ def buildMarketdata(stock: str, market: int):
                                                        metadata=metadata)
                                         storageList.append(doc)
                                         # 写入到es
-                                        es_doc= {'text':content}
+                                        es_doc = {'text': content}
                                         es_doc.update(metadata)
                                         esDocList.append(es_doc)
 
@@ -139,9 +138,9 @@ def buildMarketdata(stock: str, market: int):
                             f"获取第【{total}】条数据,title:{title},url:{url}时异常，异常信息：{e}")
                 # 存入矢量库
                 if len(storageList) > 0:
-                    store(storageList)
+                    store(storageList, stock)
                 # 存入es库
-                if len(esDocList)>0:
+                if len(esDocList) > 0:
                     esBatch(esDocList)
                 page += 1
                 print(f"第{page}页数据内容获取完毕")
@@ -181,7 +180,7 @@ def load_and_split(docs: list[Document]) -> list[Document]:
     return [doc for doc in related_docs if len(doc.page_content.strip()) > 50]
 
 
-def store(docs: list[Document]):
+def store(docs: list[Document], stock: str):
     docs = load_and_split(docs)
     print("进入存储阶段")
     embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
@@ -194,7 +193,7 @@ def store(docs: list[Document]):
                 docs,
                 embeddings,
                 connection_args={"host": "8.217.52.63", "port": "19530"},
-                collection_name="aifin",
+                collection_name=f"aifin_{stock}",
             )
             break
         except Exception as e:
@@ -204,13 +203,16 @@ def store(docs: list[Document]):
         raise Exception("写入矢量库异常")
     print("写入矢量库over")
 
+
 ###################### es操作 ###############################################
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
+
+
 # 连接到Elasticsearch实例
-def esBatch(docList:list):
+def esBatch(docList: list):
     es = Elasticsearch(['172.28.84.188:9200'])
-    #es = Elasticsearch("http://192.168.1.1:9200", http_auth=('username', 'password'), timeout=20)
+    # es = Elasticsearch("http://192.168.1.1:9200", http_auth=('username', 'password'), timeout=20)
     index_name = 'aifin'
     if not es.indices.exists(index=index_name):
         es.indices.create(index=index_name)
@@ -235,6 +237,7 @@ def esBatch(docList:list):
     if not esObj:
         raise Exception("写入ES库异常")
     print("写入ES库over")
+
 
 if __name__ == '__main__':
     if len(sys.argv) > 1:
