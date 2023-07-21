@@ -1,5 +1,6 @@
 import datetime
 import json
+import re
 import sys
 
 import pyodbc
@@ -79,10 +80,11 @@ def transEs(security_code:str,page_index:int=1):
             print(f"正在处理第【{total}】条数据：{json.dumps(metadata)}")
 
             text = download_page(metadata['url'])
+            text = re.sub(r'[\s]+', '', text)
+            print(f"text:{text}")
             metadata['text']=text
             metadata['abstract']=text[0:400]
             storageList.append(metadata)
-            print(f"text:{text}")
 
         if len(storageList) > 0:
             # 存入矢量库
