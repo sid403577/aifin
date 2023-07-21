@@ -3,8 +3,8 @@ import sys
 
 import pyodbc
 
-from crawlab.core.config.common_config import stockMap
-from crawlab.core.storage import MilvusStore, EsStore
+from config.common_config import stockMap
+from storage import MilvusStore, EsStore
 from utils.urlToData import download_page
 
 
