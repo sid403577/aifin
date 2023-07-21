@@ -91,7 +91,6 @@ class FastChatOpenAILLM(RemoteRpcModel, LLM, ABC):
             model=self.model_name,
             messages=self.build_message_list(prompt),
             temperature=self.temperature,
-            stream=True,
         )
         print(f"response:{completion.choices[0].message.content}")
         print(f"+++++++++++++++++++++++++++++++++++")

@@ -4,6 +4,10 @@ import os
 import logging
 import uuid
 
+from openai import util
+util.logger.setLevel(logging.INFO)
+
+
 LOG_FORMAT = "%(levelname) -5s %(asctime)s" "-1d: %(message)s"
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -159,12 +163,10 @@ CONDENSE_QUESTION_PROMPT_KEYWORDS = """根据以下聊天记录和后续问题�
 """
 
 # 基于上下文的prompt模版，请务必保留"{question}"和"{context}"
-PROMPT_TEMPLATE = """
-我会提供已知数据，以专业的股票经济分析师的角度给出问题的相关优势和风险建议，
-帮助分析解决问题。
-需要引用提供的已知数据内容不少于三段，输出问题答案的相关背景\判读依据\长远趋势，给出针对问题的总结，分析尽量丰满，要有依据和结论。
-最后给出关键总结和尽可能明确的回答，总结内容100字左右。
-已知信息：{context} 
+PROMPT_TEMPLATE = """已知信息：
+{context} 
+
+根据上述已知信息，请以专业金融分析师的角色，简洁和专业的来回答用户的问题。如果无法从中得到答案，请说 “根据已知信息无法回答该问题” 或 “没有提供足够的相关信息”，不允许在答案中添加编造成分，答案请使用中文。 
 问题是：{question}"""
 
 PROMPT_TEMPLATE_EXAMPLE = """
@@ -411,7 +413,7 @@ GOOGLE_CSE_ID = "d4451a0622ff94fc7"
 # 然后将文本与往上一级的标题进行拼合，实现文本信息的增强。
 ZH_TITLE_ENHANCE = False
 
-MILVUS_HOST = None # "8.217.52.63"
+MILVUS_HOST = "8.217.52.63"
 
 MILVUS_PORT = "19530"
 

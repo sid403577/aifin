@@ -1,10 +1,11 @@
 import datetime
+import json
 import time
-import shutil
 from functools import lru_cache
 from typing import List
 
-from langchain import FewShotPromptTemplate, PromptTemplate
+from langchain import FewShotPromptTemplate, PromptTemplate, LLMChain, OpenAI
+from langchain.chains.question_answering import load_qa_chain
 from langchain.docstore.document import Document
 from langchain.document_loaders import UnstructuredFileLoader, TextLoader, CSVLoader
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
@@ -23,9 +24,8 @@ from models.loader.args import parser
 from textsplitter import ChineseTextSplitter
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from textsplitter.zh_title_enhance import zh_title_enhance
-from utils import torch_gc, join_array_with_index, extract_question_and_keywords
+from utils import torch_gc, extract_question_and_keywords
 from vectorstores import MyFAISS, MyMilvus
-from langchain.vectorstores.base import VectorStore
 
 
 # patch HuggingFaceEmbeddings to make it hashable
@@ -149,14 +149,14 @@ def write_check_file(filepath, docs):
 def generate_prompt(related_docs: List[str],
                     query: str,
                     prompt_template: str = PROMPT_TEMPLATE, ) -> str:
-
     context = "\n".join([doc.page_content for doc in related_docs])
     prompt = prompt_template.replace("{question}", query).replace("{context}", context)
     print(f"prompt: {prompt}")
     return prompt
 
+
 def generate_few_shot_prompt(related_docs: List[str],
-                    query: str, embeddings) -> str:
+                             query: str, embeddings) -> str:
     example_selector = SemanticSimilarityExampleSelector.from_examples(
         # This is the list of examples available to select from.
         PROMPT_TEMPLATE_EXAMPLES,
@@ -332,7 +332,8 @@ class LocalDocQA:
             logger.error(e)
             return None
 
-    def question_generator(self, query, chat_history=[], prompt_template=CONDENSE_QUESTION_PROMPT, history_len=LLM_HISTORY_LEN):
+    def question_generator(self, query, chat_history=[], prompt_template=CONDENSE_QUESTION_PROMPT,
+                           history_len=LLM_HISTORY_LEN):
         company_name = company(query, chat_history)
         if chat_history:
             pass
@@ -356,13 +357,27 @@ class LocalDocQA:
         return query, company_name
 
     def question_generator_keywords(self, query, chat_history=[]):
-        resp, company_name = self.question_generator(query, chat_history, prompt_template=CONDENSE_QUESTION_PROMPT_KEYWORDS, history_len=LLM_HISTORY_LEN)
+        resp, company_name = self.question_generator(query, chat_history,
+                                                     prompt_template=CONDENSE_QUESTION_PROMPT_KEYWORDS,
+                                                     history_len=LLM_HISTORY_LEN)
         question, keywords = extract_question_and_keywords(resp)
         if question or keywords:
             print(f"extract question:{question} keywords:{keywords}")
             return question, keywords, company_name
         print(f"resp: {resp}")
         return resp, resp, company_name
+
+    def convert_faiss_documents(self, input_documents):
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=SENTENCE_SIZE, chunk_overlap=0)
+        docs = text_splitter.split_documents(input_documents)
+        vector_store = MyFAISS.from_documents(docs, self.embeddings)
+        vector_store.chunk_size = self.chunk_size
+        vector_store.chunk_conent = self.chunk_conent
+        vector_store.score_threshold = self.score_threshold
+        related_docs_with_score = vector_store.similarity_search_with_score(query, self.top_k)
+        print("source: {}".format("\n".join(input_documents)))
+        print("target: {}".format("\n".join(related_docs_with_score)))
+        return related_docs_with_score
 
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
         question, keywords, company_name = self.question_generator_keywords(query, chat_history)
@@ -406,6 +421,164 @@ class LocalDocQA:
                         "result": resp,
                         "source_documents": related_docs_with_score}
             yield response, history
+
+    def get_knowledge_based_answer_stuff(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
+        company_name = company(query, chat_history)
+        if company_name != "":
+            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
+            if has_vector_store(new_vs_path):
+                vs_path = new_vs_path
+        print("collection name", vs_path)
+        if not has_vector_store(vs_path):
+            response = {"query": query,
+                        "result": "知识库不存在, 请联系技术支持人员",
+                        "source_documents": []}
+            yield response, chat_history
+            return
+
+        # 1、query ==> keywords
+        print(f"问题 {query}")
+        s = time.perf_counter()
+        PROMPT_KEYWORDS = PromptTemplate(
+            template="""分析{question}, 给出三个分析角度的关键字，以JSON数组的方式输出""",
+            input_variables=["question"],
+        )
+        os.environ[
+            "OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc"  # 当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
+        os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
+        os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
+        llm_chain = LLMChain(llm=OpenAI(temperature=0), prompt=PROMPT_KEYWORDS, verbose=True)
+        keywords = json.loads(llm_chain.run(query))
+        print(f"问题关键字【{keywords}】, elapsed {time.perf_counter() - s:0.2f} seconds")
+
+        # 2、keywords ==> input documents
+        vector_store = load_vector_store(vs_path, self.embeddings)
+        vector_store.chunk_size = self.chunk_size
+        vector_store.chunk_conent = self.chunk_conent
+        vector_store.score_threshold = self.score_threshold
+        print(f"知识库加载, elapsed {time.perf_counter() - s:0.2f} seconds")
+        input_documents = []
+        for keyword in keywords:
+            related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=self.top_k)
+            input_documents.extend(related_docs_with_score)
+        print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
+        torch_gc()
+        if streaming:
+            response = {"query": query,
+                        "result": "",
+                        "source_documents": input_documents
+                        }
+            yield response, chat_history
+        if input_documents is None:
+            for answer_result in self.llm.generatorAnswer(prompt=query, history=chat_history,
+                                                          streaming=streaming):
+                resp = answer_result.llm_output["answer"]
+                history = answer_result.history
+                history[-1][0] = query
+                response = {"query": query,
+                            "result": resp,
+                            "source_documents": input_documents}
+                yield response, history
+            return
+
+        # 3、question & answer
+        PROMPT = PromptTemplate(
+            template=PROMPT_TEMPLATE,
+            input_variables=["context", "question"],
+        )
+        qa = load_qa_chain(self.llm, chain_type="stuff", prompt=PROMPT, verbose=True)
+        result = qa.run(input_documents=input_documents,
+                           question="从{}等角度分析{}, 最后给出不少于400字投资建议".format("、".join(keywords), query))
+        response = {"query": query,
+                    "result": result,
+                    "source_documents": input_documents}
+        yield response, chat_history + [[query, result]]
+        print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
+
+    def get_knowledge_based_answer_map_reduce(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
+        company_name = company(query, chat_history)
+        if company_name != "":
+            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
+            if has_vector_store(new_vs_path):
+                vs_path = new_vs_path
+        print("collection name", vs_path)
+        if not has_vector_store(vs_path):
+            response = {"query": query,
+                        "result": "知识库不存在, 请联系技术支持人员",
+                        "source_documents": []}
+            yield response, chat_history
+            return
+
+        # 1、query ==> keywords
+        print(f"问题 {query}")
+        s = time.perf_counter()
+        PROMPT_KEYWORDS = PromptTemplate(
+            template="""分析{question}, 给出三个分析角度的关键字，以JSON数组的方式输出""",
+            input_variables=["question"],
+        )
+        os.environ[
+            "OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc"  # 当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
+        os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
+        os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
+        llm_chain = LLMChain(llm=OpenAI(temperature=0), prompt=PROMPT_KEYWORDS, verbose=True)
+        keywords = json.loads(llm_chain.run(query))
+        print(f"问题关键字【{keywords}】, elapsed {time.perf_counter() - s:0.2f} seconds")
+
+        # 2、keywords ==> map_reduce results
+        vector_store = load_vector_store(vs_path, self.embeddings)
+        vector_store.chunk_size = self.chunk_size
+        vector_store.chunk_conent = self.chunk_conent
+        vector_store.score_threshold = self.score_threshold
+        print(f"知识库加载, elapsed {time.perf_counter() - s:0.2f} seconds")
+        input_documents = []
+        input_list = {}
+        for keyword in keywords:
+            related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=self.top_k)
+            input_list[keyword] = related_docs_with_score
+            input_documents.extend(related_docs_with_score)
+        print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
+        torch_gc()
+        if streaming:
+            response = {"query": query,
+                        "result": "",
+                        "source_documents": input_documents
+                        }
+            yield response, chat_history
+
+        if input_documents is None:
+            for answer_result in self.llm.generatorAnswer(prompt=query, history=chat_history,
+                                                          streaming=streaming):
+                resp = answer_result.llm_output["answer"]
+                history = answer_result.history
+                history[-1][0] = query
+                response = {"query": query,
+                            "result": resp,
+                            "source_documents": input_documents}
+                yield response, history
+            return
+
+
+        PROMPT = PromptTemplate(
+            template=PROMPT_TEMPLATE,
+            input_variables=["context", "question"],
+        )
+        qa = load_qa_chain(self.llm, chain_type="stuff", prompt=PROMPT, verbose=True)
+        results = []
+        for keyword, docs in input_list.items():
+            result = qa.run(input_documents=docs, question="从{}角度对{}做出总结".format(keyword, query))
+            results.append(result)
+        print(f"LLM回答 map_reduce, elapsed {time.perf_counter() - s:0.2f} seconds")
+
+        # 3、combine results question & answer
+        result = qa.run(input_documents=[Document(page_content=result) for result in results],
+                           question="总结不少于400字投资建议")
+        results.append(result)
+        print('\n\n'.join(results))
+        response = {"query": query,
+                    "result": '\n\n'.join(results),
+                    "source_documents": input_documents}
+        yield response, chat_history + [[query, result]]
+        print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
 
     # query      查询内容
     # vs_path    知识库路径
@@ -476,30 +649,17 @@ class LocalDocQA:
         # 谷歌搜索
         results = google_search(keywords, self.top_k)
         gdocs = search_result2docs(results)
-        elapsed = time.perf_counter() - s
-        print(f"google搜索 结束 {elapsed:0.2f} seconds len:{len(gdocs)}")
+        print(f"google搜索 结束 {time.perf_counter() - s:0.2f} seconds len:{len(gdocs)}")
+
         # 知识库搜索
         vector_store2 = load_vector_store(vs_path, self.embeddings)
-        vector_store2.chunk_size = self.chunk_size
-        vector_store2.chunk_conent = self.chunk_conent
-        vector_store2.score_threshold = self.score_threshold
         related_docs_with_score = vector_store2.similarity_search_with_score(keywords, self.top_k)
         ldocs = [doc for doc in related_docs_with_score]
-        elapsed = time.perf_counter() - s
-        print(f"知识库搜索 结束{elapsed:0.2f} seconds len:{len(ldocs)}")
+        print(f"知识库搜索 结束{time.perf_counter() - s:0.2f} seconds len:{len(ldocs)}")
 
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=SENTENCE_SIZE, chunk_overlap=0)
-        docs = text_splitter.split_documents(gdocs+ldocs)
-        vector_store = MyFAISS.from_documents(docs, self.embeddings)
-        vector_store.chunk_size = self.chunk_size
-        vector_store.chunk_conent = self.chunk_conent
-        vector_store.score_threshold = self.score_threshold
-        elapsed = time.perf_counter() - s
-        print(f"本地向量化 {elapsed:0.2f} seconds len:{len(docs)}")
-        result_docs = vector_store.similarity_search_with_score(query, self.top_k)
+        result_docs = self.convert_faiss_documents(gdocs + ldocs)
+        print(f"本地向量化搜索 结束 {time.perf_counter() - s:0.2f} seconds len:{len(result_docs)}")
         torch_gc()
-        elapsed = time.perf_counter() - s
-        print(f"本地向量化搜索 结束 {elapsed:0.2f} seconds len:{len(result_docs)}")
 
         if result_docs is None or len(result_docs) == 0:
             response = {"query": query,
