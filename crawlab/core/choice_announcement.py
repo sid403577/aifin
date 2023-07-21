@@ -63,6 +63,7 @@ def transEs(security_code:str,page_index:int=1):
         print(f"获取条数：{len(results)}")
         storageList: list = []
         for row in results:
+            total+=1
             metadata = {
                 'source': row.source,
                 'code': row.code,
