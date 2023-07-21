@@ -82,6 +82,7 @@ def transEs(security_code:str,page_index:int=1):
             metadata['text']=text
             metadata['abstract']=text[0:400]
             storageList.append(metadata)
+            print(f"text:{text}")
 
         if len(storageList) > 0:
             # 存入矢量库
