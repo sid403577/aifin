@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import json
 import time
 from functools import lru_cache
@@ -35,6 +36,10 @@ def _embeddings_hash(self):
 
 HuggingFaceEmbeddings.__hash__ = _embeddings_hash
 
+
+def calculate_md5(input_string):
+    md5_hash = hashlib.md5(input_string.encode())
+    return md5_hash.hexdigest()
 
 def has_vector_store(vs_path) -> bool:
     directories = vs_path.split("/")
@@ -225,6 +230,21 @@ def company(query, chat_history=[]):
         if company in query:
             company_name = company
     return company_name
+
+
+def deduplication_documents(input_documents):
+    # print("{}".format("\n==========".join([json.dumps({"text": doc.page_content,
+    #                                                                "metdata": doc.metadata}, ensure_ascii=False) for doc
+    #                                                    in input_documents])))
+    docs =[]
+    md5_set = set()
+    for doc in input_documents:
+        md5 = calculate_md5(doc.page_content)
+        if md5 in md5_set:
+            continue
+        docs.append(doc)
+        md5_set.add(md5)
+    return docs
 
 
 class LocalDocQA:
@@ -460,9 +480,8 @@ class LocalDocQA:
         input_documents = []
         for keyword in keywords:
             related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=self.top_k)
-            print("{}:{}".format(keyword, "\n==========".join([json.dumps({"text": doc.page_content,
-                                                                   "metdata": doc.metadata}, ensure_ascii=False) for doc in related_docs_with_score])))
-            input_documents.extend(related_docs_with_score)
+            input_documents.extend(self.convert_faiss_documents(keyword, deduplication_documents(related_docs_with_score)))
+
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
         torch_gc()
         if streaming:
@@ -536,9 +555,7 @@ class LocalDocQA:
         input_list = {}
         for keyword in keywords:
             related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=self.top_k)
-            print("{}:{}".format(keyword, "\n==========".join([json.dumps({"text": doc.page_content,
-                                                                   "metadata": doc.metadata}, ensure_ascii=False) for doc
-                                                       in related_docs_with_score])))
+            related_docs_with_score = deduplication_documents(related_docs_with_score)
             input_list[keyword] = related_docs_with_score
             input_documents.extend(related_docs_with_score)
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
@@ -570,16 +587,16 @@ class LocalDocQA:
         qa = load_qa_chain(self.llm, chain_type="stuff", prompt=PROMPT, verbose=verbose)
         results = []
         for keyword, docs in input_list.items():
-            result = qa.run(input_documents=docs, question="从{}角度对{}做出总结".format(keyword, query))
+            result = qa.run(input_documents=docs,
+                            question="从{}角度分析{}".format(keyword, query))
             results.append(result)
         print(f"LLM回答 map_reduce, elapsed {time.perf_counter() - s:0.2f} seconds")
 
         # 3、combine results question & answer
         result = qa.run(input_documents=[Document(page_content=result) for result in results],
-                           question="总结不少于400字投资建议")
-        results.append(result)
+                           question="从{}等角度分析{}, 最后给出不少于400字投资建议".format("、".join(keywords), query))
         response = {"query": query,
-                    "result": '\n\n'.join(results),
+                    "result": result,
                     "source_documents": input_documents}
         yield response, chat_history + [[query, result]]
         print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
