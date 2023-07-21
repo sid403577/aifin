@@ -1,4 +1,5 @@
 import datetime
+import json
 import sys
 
 import pyodbc
@@ -26,6 +27,7 @@ def transEs(security_code:str,page_index:int=1):
     skip_count = (page_number - 1) * page_size
     # skip_count = 2
     has_more_results = True
+    total = 0
     while has_more_results:
         query = f"""
             SELECT 
@@ -47,7 +49,8 @@ def transEs(security_code:str,page_index:int=1):
             """
         cursor.execute(query)
         results = cursor.fetchall()  # Retrieve 500 records at a time
-
+        print('----------\n')
+        print(f"开始获取第【{page_number}】页数据,每页大小：{page_size}")
         if not results:
             has_more_results = False
             break
@@ -57,6 +60,7 @@ def transEs(security_code:str,page_index:int=1):
             # if skip_count == 1:
             #     break;
             # skip_count = 1
+        print(f"获取条数：{len(results)}")
         storageList: list = []
         for row in results:
             metadata = {
@@ -71,6 +75,7 @@ def transEs(security_code:str,page_index:int=1):
                 'comeName': row.comeName,
                 'publishType': row.publish_type,
             }
+            print(f"正在处理第【{total}】条数据：{json.dumps(metadata)}")
 
             text = download_page(metadata['url'])
             metadata['text']=text
