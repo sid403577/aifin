@@ -375,8 +375,8 @@ class LocalDocQA:
         vector_store.chunk_conent = self.chunk_conent
         vector_store.score_threshold = self.score_threshold
         related_docs_with_score = vector_store.similarity_search_with_score(query, self.top_k)
-        print("source: {}".format("\n".join(input_documents)))
-        print("target: {}".format("\n".join(related_docs_with_score)))
+        print("source: {}".format("\n".join([doc.page_content for doc in input_documents])))
+        print("target: {}".format("\n".join(doc.page_content for doc in related_docs_with_score)))
         return related_docs_with_score
 
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
