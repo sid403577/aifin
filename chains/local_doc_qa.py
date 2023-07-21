@@ -367,7 +367,7 @@ class LocalDocQA:
         print(f"resp: {resp}")
         return resp, resp, company_name
 
-    def convert_faiss_documents(self, input_documents):
+    def convert_faiss_documents(self, query, input_documents):
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=SENTENCE_SIZE, chunk_overlap=0)
         docs = text_splitter.split_documents(input_documents)
         vector_store = MyFAISS.from_documents(docs, self.embeddings)
@@ -658,7 +658,7 @@ class LocalDocQA:
         ldocs = [doc for doc in related_docs_with_score]
         print(f"知识库搜索 结束{time.perf_counter() - s:0.2f} seconds len:{len(ldocs)}")
 
-        result_docs = self.convert_faiss_documents(gdocs + ldocs)
+        result_docs = self.convert_faiss_documents(query, gdocs + ldocs)
         print(f"本地向量化搜索 结束 {time.perf_counter() - s:0.2f} seconds len:{len(result_docs)}")
         torch_gc()
 
