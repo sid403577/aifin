@@ -1,3 +1,7 @@
+import uuid
+
+import requests
+from bs4 import BeautifulSoup
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 # 连接到Elasticsearch实例
@@ -19,5 +23,5 @@ def esBatch(docList:list):
     bulk(es, actions)
 
 if __name__ == '__main__':
-    l=[{'a':1,'b':2}]
-    esBatch(l)
+    print(uuid.uuid1())
+

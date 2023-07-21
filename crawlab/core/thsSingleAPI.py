@@ -2,10 +2,9 @@
 import datetime
 import json
 import sys
-
+from storage import EsStore,MilvusStore
 import requests
 from bs4 import BeautifulSoup
-
 
 marketMap = {
     32: "深圳证券交易所",
@@ -22,7 +21,7 @@ stockMap = {
     "603259": "药明康德",
     "000063": "中兴通讯",
     "600737": "中粮糖业",
-    "300887":"谱尼测试",
+    "300887": "谱尼测试",
 }
 
 
@@ -32,10 +31,10 @@ def buildMarketdata(stock: str, market: int):
     print(f"========开始获取【{stock}】在【{marketMap[market]}】的数据")
     while True:
         print(f"开始获取第{page + 1}页数据")
-        url = f"https://b2b-news.10jqka.com.cn/hxcota/market/stocks/v2/list?stock={stock}&market={market}&type=1&accessKey=74f9abd518ab0970&page={page}&pageSize=250"
+        url = f"https://b2b-news.10jqka.com.cn/hxcota/market/stocks/v2/list?stock={stock}&market={market}&type=1&accessKey=74f9abd518ab0970&page={page}&pageSize=50"
         print(f"url:{url}")
         count = 0
-        response =None
+        response = None
         while True and count < 3:
             try:
                 response = requests.get(url)
@@ -56,8 +55,7 @@ def buildMarketdata(stock: str, market: int):
                 if length == 0:
                     print(f"原因：{'' if 'msg' not in response_text else response_text['msg']}")
                     break
-                storageList: list[Document] = []
-                esDocList: list = []
+                storageList: list = []
                 for pre_data in response_text['data']:
                     try:
                         total += 1
@@ -123,14 +121,10 @@ def buildMarketdata(stock: str, market: int):
                                                     "type": "资讯",
                                                     "createTime": createTime,
                                                     "abstract": abstract,
-                                                    "title": title}
-                                        doc = Document(page_content=content,
-                                                       metadata=metadata)
-                                        storageList.append(doc)
-                                        # 写入到es
-                                        es_doc= {'text':content}
-                                        es_doc.update(metadata)
-                                        esDocList.append(es_doc)
+                                                    "title": title,
+                                                    "text":content}
+                                        storageList.append(metadata)
+
 
                         print(f"第{total}条数据处理完成")
                         print("\n")
@@ -139,10 +133,10 @@ def buildMarketdata(stock: str, market: int):
                             f"获取第【{total}】条数据,title:{title},url:{url}时异常，异常信息：{e}")
                 # 存入矢量库
                 if len(storageList) > 0:
-                    store(storageList)
-                # 存入es库
-                if len(esDocList)>0:
-                    esBatch(esDocList)
+                    # 存入矢量库
+                    MilvusStore.storeData(storageList, f"aifin_{stock}", "8.217.52.63:19530")
+                    # 存入es库
+                    EsStore.storeData(storageList, f"aifin", "8.217.110.233:9200")
                 page += 1
                 print(f"第{page}页数据内容获取完毕")
 
@@ -153,92 +147,10 @@ def buildMarketdata(stock: str, market: int):
     print(f"========获取【{stock}】在【{marketMap[market]}】的数据完毕，一共获取到【{total}】条数据")
 
 
-###################### 存储类 ###############################################
-
-import torch
-from langchain.docstore.document import Document
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Milvus
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-embedding_model_dict = {
-    "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
-    "ernie-base": "nghuyong/ernie-3.0-base-zh",
-    "text2vec-base": "shibing624/text2vec-base-chinese",
-    "text2vec": "/root/model/text2vec-large-chinese",
-    "m3e-small": "moka-ai/m3e-small",
-    "m3e-base": "moka-ai/m3e-base",
-}
-EMBEDDING_MODEL = "text2vec"
-EMBEDDING_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-
-
-def load_and_split(docs: list[Document]) -> list[Document]:
-    print("进入切词阶段")
-    """Load documents and split into chunks."""
-    _text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
-    related_docs = _text_splitter.split_documents(docs)
-    return [doc for doc in related_docs if len(doc.page_content.strip()) > 50]
-
-
-def store(docs: list[Document]):
-    docs = load_and_split(docs)
-    print("进入存储阶段")
-    embeddings = HuggingFaceEmbeddings(model_name=embedding_model_dict[EMBEDDING_MODEL],
-                                       model_kwargs={'device': EMBEDDING_DEVICE})
-    count = 0
-    obj = None
-    while True and count < 3:
-        try:
-            obj = Milvus.from_documents(
-                docs,
-                embeddings,
-                connection_args={"host": "8.217.52.63", "port": "19530"},
-                collection_name="aifin",
-            )
-            break
-        except Exception as e:
-            print(f"error,写入矢量库异常,{e}")
-            count += 1
-    if not obj:
-        raise Exception("写入矢量库异常")
-    print("写入矢量库over")
-
-###################### es操作 ###############################################
-from elasticsearch import Elasticsearch
-from elasticsearch.helpers import bulk
-# 连接到Elasticsearch实例
-def esBatch(docList:list):
-    es = Elasticsearch(['172.28.84.188:9200'])
-    #es = Elasticsearch("http://192.168.1.1:9200", http_auth=('username', 'password'), timeout=20)
-    index_name = 'aifin'
-    if not es.indices.exists(index=index_name):
-        es.indices.create(index=index_name)
-    # 定义要插入的文档数据
-    # 使用bulk()方法批量插入文档
-    actions = [
-        {
-            '_index': index_name,
-            '_source': doc
-        }
-        for doc in docList
-    ]
-    count = 0
-    esObj = None
-    while True and count < 3:
-        try:
-            esObj = bulk(es, actions)
-            break
-        except Exception as e:
-            print(f"error,写入ES库异常,{e}")
-            count += 1
-    if not esObj:
-        raise Exception("写入ES库异常")
-    print("写入ES库over")
-
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        stock = sys.argv[1]  # 域名
+    type = sys.argv[1] #1增量，2全量
+    if len(sys.argv) ==3:
+        stock = sys.argv[2]  # 股票Code
         if stock.startswith("6"):
             buildMarketdata(stock, 16)
         else:

@@ -35,8 +35,8 @@ def eastmoney(code: str, type: str, startPage=1):  # 两个参数分别表示开
 
     while flag:
         print(f"开始获取第{pageIndex}页数据")
-        param = {"uid": "4529014368817886", "keyword": code, "type": ["cmsArticleWebOld"], "client": "web",
-                 "clientType": "web", "clientVersion": "curr", "param": {
+        param = {"uid": "4529014368817886", "keyword": code, "type": ["cmsArticleWebOld"], "client": "core",
+                 "clientType": "core", "clientVersion": "curr", "param": {
                 "cmsArticleWebOld": {"searchScope": "default", "sort": "time", "pageIndex": pageIndex,
                                      "pageSize": pageSize,
                                      "preTag": "<em>", "postTag": "</em>"}}}
