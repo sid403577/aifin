@@ -438,13 +438,13 @@ def docs2source(docs):
                                 "title": doc.metadata.get("title"),
                                 "url": doc.metadata.get("url"),
                                 "rootUrl": get_root_domain(doc.metadata.get("url")),
-                                "content": doc.metadata.get("abstract"),
+                                "content": doc.metadata["abstract"] if (len(doc.metadata.get("abstract")) > 0) else doc.page_content,
                                 "date": doc.metadata.get("date"),
                                 "score": doc.metadata.get("score"),
                                 "source": doc.metadata.get("source"),
                             }
                         ))
-        url_set.add(doc.metadata.get("url"))
+        url_set.add(doc.metadata.get("uniqueId"))
         inum = inum + 1
     return rdocs
 
