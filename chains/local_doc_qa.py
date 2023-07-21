@@ -460,7 +460,8 @@ class LocalDocQA:
         input_documents = []
         for keyword in keywords:
             related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=self.top_k)
-            print("{}:{}".format(keyword, "\n==".join([json.dumps(doc.metadata, ensure_ascii=False) for doc in related_docs_with_score])))
+            print("{}:{}".format(keyword, "\n==========".join([json.dumps({"text": doc.page_content,
+                                                                   "metdata": doc.metadata}, ensure_ascii=False) for doc in related_docs_with_score])))
             input_documents.extend(related_docs_with_score)
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
         torch_gc()
@@ -535,7 +536,9 @@ class LocalDocQA:
         input_list = {}
         for keyword in keywords:
             related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=self.top_k)
-            print("{}:{}".format(keyword, "\n==".join([json.dumps(doc.metadata, ensure_ascii=False)  for doc in related_docs_with_score])))
+            print("{}:{}".format(keyword, "\n==========".join([json.dumps({"text": doc.page_content,
+                                                                   "metadata": doc.metadata}, ensure_ascii=False) for doc
+                                                       in related_docs_with_score])))
             input_list[keyword] = related_docs_with_score
             input_documents.extend(related_docs_with_score)
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
