@@ -438,7 +438,7 @@ def docs2source(docs):
                                 "title": doc.metadata.get("title"),
                                 "url": doc.metadata.get("url"),
                                 "rootUrl": get_root_domain(doc.metadata.get("url")),
-                                "content": doc.metadata["abstract"] if ('abstract' not in doc.metadata or not doc.metadata['abstract']) else doc.page_content,
+                                "content": doc.metadata["abstract"] if (len(doc.metadata.get("abstract")) > 0) else doc.page_content,
                                 "date": doc.metadata.get("date"),
                                 "score": doc.metadata.get("score"),
                                 "source": doc.metadata.get("source"),
