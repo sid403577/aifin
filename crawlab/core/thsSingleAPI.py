@@ -2,6 +2,8 @@
 import datetime
 import json
 import sys
+
+from config.common_config import stockMap
 from storage import EsStore,MilvusStore
 import requests
 from bs4 import BeautifulSoup
@@ -11,18 +13,6 @@ marketMap = {
     16: "上海证券交易所",
 }
 
-stockMap = {
-    "002594": "比亚迪",
-    "600887": "伊利股份",
-    "300750": "宁德时代",
-    "002518": "科士达",
-    "600225": "卓朗科技",
-    "600977": "中国电影",
-    "603259": "药明康德",
-    "000063": "中兴通讯",
-    "600737": "中粮糖业",
-    "300887": "谱尼测试",
-}
 
 
 def buildMarketdata(stock: str, market: int):
@@ -148,9 +138,8 @@ def buildMarketdata(stock: str, market: int):
 
 
 if __name__ == '__main__':
-    type = sys.argv[1] #1增量，2全量
-    if len(sys.argv) ==3:
-        stock = sys.argv[2]  # 股票Code
+    if len(sys.argv) > 1:
+        stock = sys.argv[1]
         if stock.startswith("6"):
             buildMarketdata(stock, 16)
         else:
