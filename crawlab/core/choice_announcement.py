@@ -80,7 +80,7 @@ def transEs(security_code:str,page_index:int=1):
             print(f"正在处理第【{total}】条数据：{json.dumps(metadata)}")
 
             text = download_page(metadata['url'])
-            if not text or len(text):
+            if not text or len(text.strip())==0:
                 break
             text = re.sub(r'[\s]+', '', text)
             print(f"text:{text}")
