@@ -80,6 +80,8 @@ def transEs(security_code:str,page_index:int=1):
             print(f"正在处理第【{total}】条数据：{json.dumps(metadata)}")
 
             text = download_page(metadata['url'])
+            if not text or len(text):
+                break
             text = re.sub(r'[\s]+', '', text)
             print(f"text:{text}")
             metadata['text']=text
@@ -97,9 +99,9 @@ def transEs(security_code:str,page_index:int=1):
     conn.close()
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        stock = sys.argv[1]  # 股票Code
+    # if len(sys.argv) > 1:
+    #     stock = sys.argv[1]  # 股票Code
+    #     transEs(stock, 1)
+    # else:
+    for stock in stockMap:
         transEs(stock, 1)
-    else:
-        for stock in stockMap:
-            transEs(stock, 1)
