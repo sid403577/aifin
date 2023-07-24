@@ -401,7 +401,7 @@ class LocalDocQA:
 
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
         question, keywords, company_name = self.question_generator_keywords(query, chat_history)
-        if company_name != "":
+        if company_name != "" and company_name in COMPANY_CODES.keys():
             new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
@@ -444,7 +444,7 @@ class LocalDocQA:
 
     def get_knowledge_based_answer_stuff(self, query, vs_path, chat_history=[], streaming: bool = STREAMING, verbose = False):
         company_name = company(query, chat_history)
-        if company_name != "":
+        if company_name != "" and company_name in COMPANY_CODES.keys():
             new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
@@ -509,7 +509,7 @@ class LocalDocQA:
         )
         qa = load_qa_chain(self.llm, chain_type="stuff", prompt=PROMPT, verbose=verbose)
         result = qa.run(input_documents=input_documents,
-                           question="从{}等角度分析{}, 最后给出不少于400字投资建议".format("、".join(keywords), query))
+                           question="从{}等角度分析{},并在回答中标注出处, 最后给出不少于400字投资建议".format("、".join(keywords), query))
         response = {"query": query,
                     "result": result,
                     "source_documents": input_documents}
@@ -518,7 +518,7 @@ class LocalDocQA:
 
     def get_knowledge_based_answer_map_reduce(self, query, vs_path, chat_history=[], streaming: bool = STREAMING, verbose=False):
         company_name = company(query, chat_history)
-        if company_name != "":
+        if company_name != "" and company_name in COMPANY_CODES.keys():
             new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
@@ -656,7 +656,7 @@ class LocalDocQA:
             knowledge_ratio：知识库占比（0-1）
         """
         question, keywords, company_name = self.question_generator_keywords(query, chat_history)
-        if company_name != "":
+        if company_name != "" and company_name in COMPANY_CODES.keys():
             new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
