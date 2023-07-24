@@ -509,7 +509,7 @@ class LocalDocQA:
         )
         qa = load_qa_chain(self.llm, chain_type="stuff", prompt=PROMPT, verbose=verbose)
         result = qa.run(input_documents=input_documents,
-                           question="从{}等角度分析{},并在回答中标注出处, 最后给出不少于400字投资建议".format("、".join(keywords), query))
+                           question="从{}等角度分析{},并在回答中标注出处, 最后给出不少于200字投资建议".format("、".join(keywords), query))
         response = {"query": query,
                     "result": result,
                     "source_documents": input_documents}
@@ -594,7 +594,7 @@ class LocalDocQA:
 
         # 3、combine results question & answer
         result = qa.run(input_documents=[Document(page_content=result) for result in results],
-                           question="从{}等角度分析{}, 最后给出不少于400字投资建议".format("、".join(keywords), query))
+                           question="从{}等角度分析{}, 最后给出不少于200字投资建议".format("、".join(keywords), query))
         response = {"query": query,
                     "result": result,
                     "source_documents": input_documents}
