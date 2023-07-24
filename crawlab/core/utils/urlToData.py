@@ -13,7 +13,7 @@ def get_text(url, text_re: dict):
     return con
 def download_page(url:str, para=None):
     if not url or len(url.strip())==0:
-        return None
+        return ""
 
     if para:
         response = requests.get(url, params=para)
