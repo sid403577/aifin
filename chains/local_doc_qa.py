@@ -1,4 +1,5 @@
 import datetime
+from datetime import datetime
 import hashlib
 import json
 import time
@@ -238,12 +239,30 @@ def deduplication_documents(input_documents):
     #                                                    in input_documents])))
     docs =[]
     md5_set = set()
+    date_docs = {}
+    dates = set()
     for doc in input_documents:
         md5 = calculate_md5(doc.page_content)
         if md5 in md5_set:
             continue
-        docs.append(doc)
+        # docs.append(doc)
         md5_set.add(md5)
+
+        date = doc.metadata['date']
+        if date in dates:
+            continue
+        dates.add(datetime.strptime(date, '%Y-%m-%d %H:%M:%S'))
+        if date_docs.get(date) is None:
+            date_docs[date] = [doc]
+        else:
+            date_docs[date].append(doc)
+    sorted_dates = sorted(dates, reverse=True)
+    for date in sorted_dates:
+        for doc in date_docs[date.strftime('%Y-%m-%d %H:%M:%S')]:
+            docs.append(doc)
+    if len(sorted_dates) > 1:
+        r = docs[:(len(docs) // 2 + 1)]
+        return r
     return docs
 
 
@@ -478,8 +497,9 @@ class LocalDocQA:
         vector_store.score_threshold = self.score_threshold
         print(f"知识库加载, elapsed {time.perf_counter() - s:0.2f} seconds")
         input_documents = []
+        top_k = self.top_k * 3
         for keyword in keywords:
-            related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=self.top_k)
+            related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=top_k)
             input_documents.extend(self.convert_faiss_documents(keyword, deduplication_documents(related_docs_with_score)))
 
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
@@ -509,9 +529,9 @@ class LocalDocQA:
         )
         qa = load_qa_chain(self.llm, chain_type="stuff", prompt=PROMPT, verbose=verbose)
         result = qa.run(input_documents=input_documents,
-                           question="从{}等角度分析{},并在回答中标注出处, 最后给出不少于200字投资建议".format("、".join(keywords), query))
+                           question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
         response = {"query": query,
-                    "result": result,
+                    "result": '我是股晟智能AI助手，{}。 \n投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险'.format(result),
                     "source_documents": input_documents}
         yield response, chat_history + [[query, result]]
         print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
@@ -553,9 +573,10 @@ class LocalDocQA:
         print(f"知识库加载, elapsed {time.perf_counter() - s:0.2f} seconds")
         input_documents = []
         input_list = {}
+        top_k = self.top_k * 3
         for keyword in keywords:
-            related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=self.top_k)
-            related_docs_with_score = deduplication_documents(related_docs_with_score)
+            related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=top_k)
+            related_docs_with_score = self.convert_faiss_documents(keyword,deduplication_documents(related_docs_with_score))
             input_list[keyword] = related_docs_with_score
             input_documents.extend(related_docs_with_score)
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
@@ -594,9 +615,9 @@ class LocalDocQA:
 
         # 3、combine results question & answer
         result = qa.run(input_documents=[Document(page_content=result) for result in results],
-                           question="从{}等角度分析{}, 最后给出不少于200字投资建议".format("、".join(keywords), query))
+                           question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
         response = {"query": query,
-                    "result": result,
+                    "result": '我是股晟智能AI助手，{}。 \n投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险'.format(result),
                     "source_documents": input_documents}
         yield response, chat_history + [[query, result]]
         print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
