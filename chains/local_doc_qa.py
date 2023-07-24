@@ -531,7 +531,7 @@ class LocalDocQA:
         result = qa.run(input_documents=input_documents,
                            question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
         response = {"query": query,
-                    "result": '我是股晟智能AI助手，{}。 \n投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险'.format(result),
+                    "result": '我是股晟智能AI助手，{} \n股晟智能AI助手提醒: 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险'.format(result),
                     "source_documents": input_documents}
         yield response, chat_history + [[query, result]]
         print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
@@ -617,7 +617,7 @@ class LocalDocQA:
         result = qa.run(input_documents=[Document(page_content=result) for result in results],
                            question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
         response = {"query": query,
-                    "result": '我是股晟智能AI助手，{}。 \n投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险'.format(result),
+                    "result": '我是股晟智能AI助手，{} \n股晟智能AI助手提醒:投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险'.format(result),
                     "source_documents": input_documents}
         yield response, chat_history + [[query, result]]
         print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
