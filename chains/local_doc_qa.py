@@ -42,6 +42,7 @@ def calculate_md5(input_string):
     md5_hash = hashlib.md5(input_string.encode())
     return md5_hash.hexdigest()
 
+
 def has_vector_store(vs_path) -> bool:
     directories = vs_path.split("/")
     if MILVUS_HOST:
@@ -233,11 +234,15 @@ def company(query, chat_history=[]):
     return company_name
 
 
+def company_pe(company_code):
+    return None, None
+
+
 def deduplication_documents(input_documents):
     # print("{}".format("\n==========".join([json.dumps({"text": doc.page_content,
     #                                                                "metdata": doc.metadata}, ensure_ascii=False) for doc
     #                                                    in input_documents])))
-    docs =[]
+    docs = []
     md5_set = set()
     date_docs = {}
     dates = set()
@@ -420,7 +425,7 @@ class LocalDocQA:
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
         question, keywords, company_name = self.question_generator_keywords(query, chat_history)
         if company_name != "" and company_name in COMPANY_CODES.keys():
-            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
+            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]['code']
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
         if not has_vector_store(vs_path):
@@ -460,10 +465,11 @@ class LocalDocQA:
                         "source_documents": related_docs_with_score}
             yield response, history
 
-    def get_knowledge_based_answer_stuff(self, query, vs_path, chat_history=[], streaming: bool = STREAMING, verbose = False):
+    def get_knowledge_based_answer_stuff(self, query, vs_path, chat_history=[], streaming: bool = STREAMING,
+                                         verbose=False):
         company_name = company(query, chat_history)
         if company_name != "" and company_name in COMPANY_CODES.keys():
-            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
+            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]['code']
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
         print("collection name", vs_path)
@@ -474,6 +480,7 @@ class LocalDocQA:
             yield response, chat_history
             return
 
+        price, pe = company_pe(company_name)
         # 1、query ==> keywords
         print(f"问题 {query}")
         s = time.perf_counter()
@@ -499,7 +506,8 @@ class LocalDocQA:
         top_k = self.top_k * 3
         for keyword in keywords:
             related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=top_k)
-            input_documents.extend(self.convert_faiss_documents(keyword, deduplication_documents(related_docs_with_score)))
+            input_documents.extend(
+                self.convert_faiss_documents(keyword, deduplication_documents(related_docs_with_score)))
 
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
         if streaming:
@@ -529,17 +537,26 @@ class LocalDocQA:
         )
         qa = load_qa_chain(self.llm, chain_type="stuff", prompt=PROMPT, verbose=verbose)
         result = qa.run(input_documents=input_documents,
-                           question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
+                        question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
+
+        if company_name is None or price is None or pe is None:
+            result = '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒, 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+                result)
+        else:
+            result = '我是股晟智能AI助手，{} \n\n截至今日，{}的当前股价为¥{}, 市盈率为{}。\n\n股晟智能AI助手提醒, 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+                result, company_name, price, pe)
+
         response = {"query": query,
-                    "result": '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒: 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险'.format(result),
+                    "result": result,
                     "source_documents": input_documents}
         yield response, chat_history + [[query, result]]
         print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
 
-    def get_knowledge_based_answer_map_reduce(self, query, vs_path, chat_history=[], streaming: bool = STREAMING, verbose=False):
+    def get_knowledge_based_answer_map_reduce(self, query, vs_path, chat_history=[], streaming: bool = STREAMING,
+                                              verbose=False):
         company_name = company(query, chat_history)
         if company_name != "" and company_name in COMPANY_CODES.keys():
-            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
+            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]['code']
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
         print("collection name", vs_path)
@@ -550,6 +567,7 @@ class LocalDocQA:
             yield response, chat_history
             return
 
+        price, pe = company_pe(company_name)
         # 1、query ==> keywords
         print(f"问题 {query}")
         s = time.perf_counter()
@@ -576,7 +594,8 @@ class LocalDocQA:
         top_k = self.top_k * 3
         for keyword in keywords:
             related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=top_k)
-            related_docs_with_score = self.convert_faiss_documents(keyword,deduplication_documents(related_docs_with_score))
+            related_docs_with_score = self.convert_faiss_documents(keyword,
+                                                                   deduplication_documents(related_docs_with_score))
             input_list[keyword] = related_docs_with_score
             input_documents.extend(related_docs_with_score)
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
@@ -600,7 +619,6 @@ class LocalDocQA:
                 yield response, history
             return
 
-
         PROMPT = PromptTemplate(
             template=PROMPT_TEMPLATE,
             input_variables=["context", "question"],
@@ -615,9 +633,15 @@ class LocalDocQA:
 
         # 3、combine results question & answer
         result = qa.run(input_documents=[Document(page_content=result) for result in results],
-                           question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
+                        question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
+        if company_name is None or price is None or pe is None:
+            result = '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒, 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+                result)
+        else:
+            result = '我是股晟智能AI助手，{} \n\n截至今日，{}的当前股价为¥{}, 市盈率为{}。\n\n股晟智能AI助手提醒, 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+                result, company_name, price, pe)
         response = {"query": query,
-                    "result": '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒:投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险'.format(result),
+                    "result": result,
                     "source_documents": input_documents}
         yield response, chat_history + [[query, result]]
         print(f"LLM回答, elapsed {time.perf_counter() - s:0.2f} seconds")
@@ -678,7 +702,7 @@ class LocalDocQA:
         """
         question, keywords, company_name = self.question_generator_keywords(query, chat_history)
         if company_name != "" and company_name in COMPANY_CODES.keys():
-            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]
+            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]['code']
             if has_vector_store(new_vs_path):
                 vs_path = new_vs_path
         if not has_vector_store(vs_path):
