@@ -491,10 +491,11 @@ class LocalDocQA:
             template="""分析{question}, 给出三个分析角度的关键字，以JSON数组的方式输出""",
             input_variables=["question"],
         )
-        os.environ[
-            "OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc"  # 当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
-        os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
-        os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
+        if "OPENAI_API_KEY" not in os.environ:
+            os.environ[
+                "OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc"  # 当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
+            os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
+            os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
         llm_chain = LLMChain(llm=OpenAI(temperature=0), prompt=PROMPT_KEYWORDS, verbose=verbose)
         keywords = json.loads(llm_chain.run(query))
         print(f"问题关键字【{keywords}】, elapsed {time.perf_counter() - s:0.2f} seconds")
@@ -578,10 +579,11 @@ class LocalDocQA:
             template="""分析{question}, 给出三个分析角度的关键字，以JSON数组的方式输出""",
             input_variables=["question"],
         )
-        os.environ[
-            "OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc"  # 当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
-        os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
-        os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
+        if "OPENAI_API_KEY" not in os.environ:
+            os.environ[
+                "OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc"  # 当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
+            os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
+            os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
         llm_chain = LLMChain(llm=OpenAI(temperature=0), prompt=PROMPT_KEYWORDS, verbose=verbose)
         keywords = json.loads(llm_chain.run(query))
         print(f"问题关键字【{keywords}】, elapsed {time.perf_counter() - s:0.2f} seconds")
