@@ -250,19 +250,18 @@ def deduplication_documents(input_documents):
 
         date = doc.metadata['date']
         if date in dates:
-            continue
-        dates.add(datetime.strptime(date, '%Y-%m-%d %H:%M:%S'))
-        if date_docs.get(date) is None:
-            date_docs[date] = [doc]
-        else:
             date_docs[date].append(doc)
+        else:
+            date_docs[date] = [doc]
+            dates.add(datetime.strptime(date, '%Y-%m-%d %H:%M:%S'))
+
     sorted_dates = sorted(dates, reverse=True)
     for date in sorted_dates:
         for doc in date_docs[date.strftime('%Y-%m-%d %H:%M:%S')]:
             docs.append(doc)
-    if len(sorted_dates) > 1:
-        r = docs[:(len(docs) // 2 + 1)]
-        return r
+    # if len(sorted_dates) > 1:
+    #     r = docs[:(len(docs) // 2 + 1)]
+    #     return r
     return docs
 
 
@@ -414,8 +413,8 @@ class LocalDocQA:
         vector_store.chunk_conent = self.chunk_conent
         vector_store.score_threshold = self.score_threshold
         related_docs_with_score = vector_store.similarity_search_with_score(query, self.top_k)
-        print("source: {}".format("\n".join([doc.page_content for doc in input_documents])))
-        print("target: {}".format("\n".join(doc.page_content for doc in related_docs_with_score)))
+        print("source: {}".format("\n===".join([doc.page_content for doc in input_documents])))
+        print("target: {}".format("\n***".join(doc.page_content for doc in related_docs_with_score)))
         return related_docs_with_score
 
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
@@ -503,13 +502,14 @@ class LocalDocQA:
             input_documents.extend(self.convert_faiss_documents(keyword, deduplication_documents(related_docs_with_score)))
 
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
-        torch_gc()
         if streaming:
             response = {"query": query,
                         "result": "",
                         "source_documents": input_documents
                         }
             yield response, chat_history
+        torch_gc()
+
         if input_documents is None:
             for answer_result in self.llm.generatorAnswer(prompt=query, history=chat_history,
                                                           streaming=streaming):
@@ -580,13 +580,13 @@ class LocalDocQA:
             input_list[keyword] = related_docs_with_score
             input_documents.extend(related_docs_with_score)
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
-        torch_gc()
         if streaming:
             response = {"query": query,
                         "result": "",
                         "source_documents": input_documents
                         }
             yield response, chat_history
+        torch_gc()
 
         if input_documents is None:
             for answer_result in self.llm.generatorAnswer(prompt=query, history=chat_history,

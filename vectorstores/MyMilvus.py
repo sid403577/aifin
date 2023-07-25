@@ -35,6 +35,11 @@ class MyMilvus(Milvus, VectorStore):
             timeout: Optional[int] = None,
             **kwargs: Any,
     ) -> List[Document]:
+        if expr is None:
+            import datetime
+            current_date = datetime.date.today()
+            one_year_ago = current_date - datetime.timedelta(days=365)
+            expr = 'date >= "{}"'.format(one_year_ago.strftime('%Y-%m-%d'))
         ret = super().similarity_search_with_score_by_vector(embedding, k, param, expr, timeout, **kwargs)
         docs = []
         for item in ret:
