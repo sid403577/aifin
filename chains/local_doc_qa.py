@@ -234,7 +234,10 @@ def company(query, chat_history=[]):
     return company_name
 
 
-def company_pe(company_code):
+def company_pe(company):
+    if company in COMPANY_CODES.keys():
+        if 'pe' in COMPANY_CODES[company] and 'price' in COMPANY_CODES[company]:
+            return COMPANY_CODES[company]['price'], COMPANY_CODES[company]['pe']
     return None, None
 
 

@@ -435,33 +435,52 @@ COMPANYS = ['比亚迪', '伊利股份', '宁德时代', '科士达',
 # SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=300887 ORDER BY TRADEDATE DESC;
 COMPANY_CODES = {
     "比亚迪": {
-        "code": "002594"
+        "code": "002594",
+        "price": 264.59,
+        "pe": 38.62,
     },
     "伊利股份":{
-        "code": "600887"
+        "code": "600887",
+        "price": 27.76,
+        "pe": 18.55,
     },
     "宁德时代": {
         "code": "300750",
+        "price": 226.35,
+        "pe": 25.48,
     },
     "科士达": {
-        "code": "002518"
+        "code": "002518",
+        "price": 34.06,
+        "pe": 23.92,
     },
     "卓朗科技": {
-        "code": "600225"
+        "code": "600225",
+        "price": 5.95,
+        "pe": 42.57,
     },
     "中国电影": {
-        "code": "600977"
+        "code": "600977",
+        "price": 15.10,
     },
     "药明康德": {
-        "code": "603259"
+        "code": "603259",
+        "price": 68.15,
+        "pe": 21.66,
     },
     "中兴通讯": {
-        "code": "000063"
+        "code": "000063",
+        "price": 40.86,
+        "pe": 22.94,
     },
     "中粮糖业": {
-        "code": "600737"
+        "code": "600737",
+        "price": 8.17,
+        "pe": 22.17,
     },
     "谱尼测试": {
-        "code": "300887"
+        "code": "300887",
+        "price": 20.56,
+        "pe": 34.59,
     },
 }
