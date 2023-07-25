@@ -543,10 +543,10 @@ class LocalDocQA:
                         question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
 
         if company_name is None or price is None or pe is None:
-            result = '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒, 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+            result = '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
                 result)
         else:
-            result = '我是股晟智能AI助手，{} \n\n截至今日，{}的当前股价为¥{}, 市盈率为{}。\n\n股晟智能AI助手提醒, 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+            result = '我是股晟智能AI助手，{} \n\n截至今日，{}的当前股价为¥{}， 市盈率为{}。\n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
                 result, company_name, price, pe)
 
         response = {"query": query,
@@ -638,10 +638,10 @@ class LocalDocQA:
         result = qa.run(input_documents=[Document(page_content=result) for result in results],
                         question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
         if company_name is None or price is None or pe is None:
-            result = '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒, 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+            result = '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
                 result)
         else:
-            result = '我是股晟智能AI助手，{} \n\n截至今日，{}的当前股价为¥{}, 市盈率为{}。\n\n股晟智能AI助手提醒, 投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+            result = '我是股晟智能AI助手，{} \n\n截至今日，{}的当前股价为¥{}，市盈率为{}。\n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
                 result, company_name, price, pe)
         response = {"query": query,
                     "result": result,
