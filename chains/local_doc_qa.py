@@ -27,6 +27,7 @@ from textsplitter import ChineseTextSplitter
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from textsplitter.zh_title_enhance import zh_title_enhance
 from utils import torch_gc, extract_question_and_keywords
+from utils.stockdata import getTopics, getCodeByName, getPE_Price
 from vectorstores import MyFAISS, MyMilvus
 
 
@@ -225,20 +226,19 @@ def company(query, chat_history=[]):
     for i, (old_query, response) in enumerate(chat_history):
         if old_query is None:
             continue
-        for company in COMPANYS:
-            if company in old_query:
-                company_name = company
-    for company in COMPANYS:
-        if company in query:
-            company_name = company
+        topics = getTopics(old_query)
+        if topics:
+            company_name = topics[0]
+    topics = getTopics(query)
+    if topics:
+        company_name = topics[0]
     return company_name
 
 
 def company_pe(company):
-    if company in COMPANY_CODES.keys():
-        if 'pe' in COMPANY_CODES[company] and 'price' in COMPANY_CODES[company]:
-            return COMPANY_CODES[company]['price'], COMPANY_CODES[company]['pe']
-    return None, None
+    code = getCodeByName(company)
+    if code:
+        return getPE_Price(code)
 
 
 def deduplication_documents(input_documents):
@@ -447,10 +447,12 @@ class LocalDocQA:
 
     def get_knowledge_based_answer(self, query, vs_path, chat_history=[], streaming: bool = STREAMING):
         question, keywords, company_name = self.question_generator_keywords(query, chat_history)
-        if company_name != "" and company_name in COMPANY_CODES.keys():
-            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]['code']
-            if has_vector_store(new_vs_path):
-                vs_path = new_vs_path
+        if company_name:
+            code = getCodeByName(company_name)
+            if code:
+                new_vs_path = vs_path + "_" + code
+                if has_vector_store(new_vs_path):
+                    vs_path = new_vs_path
         if not has_vector_store(vs_path):
             response = {"query": query,
                         "result": "知识库不存在, 请联系技术支持人员",
@@ -491,10 +493,12 @@ class LocalDocQA:
     def get_knowledge_based_answer_stuff(self, query, vs_path, chat_history=[], streaming: bool = STREAMING,
                                          verbose=False):
         company_name = company(query, chat_history)
-        if company_name != "" and company_name in COMPANY_CODES.keys():
-            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]['code']
-            if has_vector_store(new_vs_path):
-                vs_path = new_vs_path
+        if company_name:
+            code = getCodeByName(company_name)
+            if code:
+                new_vs_path = vs_path + "_" + code
+                if has_vector_store(new_vs_path):
+                    vs_path = new_vs_path
         print("collection name", vs_path)
         if not has_vector_store(vs_path):
             response = {"query": query,
@@ -503,7 +507,7 @@ class LocalDocQA:
             yield response, chat_history
             return
 
-        price, pe = company_pe(company_name)
+        pe = company_pe(company_name)
         # 1、query ==> keywords
         print(f"问题 {query}")
         s = time.perf_counter()
@@ -563,12 +567,13 @@ class LocalDocQA:
         result = qa.run(input_documents=add_index_documents(input_documents),
                         question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
 
-        if company_name is None or price is None or pe is None:
+        if company_name is None or pe is None:
             result = '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
                 result)
         else:
-            result = '我是股晟智能AI助手，{} \n\n截至今日，{}的当前股价为¥{}， 市盈率为{}。\n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
-                result, company_name, price, pe)
+            result = '我是股晟智能AI助手，{} \n\n截至{}，{}的当前股价为¥{}， 市盈率为{}。' \
+                     '\n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+                result, pe[0], company_name, pe[1], pe[2])
 
         response = {"query": query,
                     "result": result,
@@ -579,10 +584,12 @@ class LocalDocQA:
     def get_knowledge_based_answer_map_reduce(self, query, vs_path, chat_history=[], streaming: bool = STREAMING,
                                               verbose=False):
         company_name = company(query, chat_history)
-        if company_name != "" and company_name in COMPANY_CODES.keys():
-            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]['code']
-            if has_vector_store(new_vs_path):
-                vs_path = new_vs_path
+        if company_name:
+            code = getCodeByName(company_name)
+            if code:
+                new_vs_path = vs_path + "_" + code
+                if has_vector_store(new_vs_path):
+                    vs_path = new_vs_path
         print("collection name", vs_path)
         if not has_vector_store(vs_path):
             response = {"query": query,
@@ -591,7 +598,7 @@ class LocalDocQA:
             yield response, chat_history
             return
 
-        price, pe = company_pe(company_name)
+        pe = company_pe(company_name)
         # 1、query ==> keywords
         print(f"问题 {query}")
         s = time.perf_counter()
@@ -660,12 +667,13 @@ class LocalDocQA:
         # 3、combine results question & answer
         result = qa.run(input_documents=[Document(page_content=result) for result in results],
                         question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
-        if company_name is None or price is None or pe is None:
+        if company_name is None or pe is None:
             result = '我是股晟智能AI助手，{} \n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
                 result)
         else:
-            result = '我是股晟智能AI助手，{} \n\n截至今日，{}的当前股价为¥{}，市盈率为{}。\n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
-                result, company_name, price, pe)
+            result = '我是股晟智能AI助手，{} \n\n截至{}，{}的当前股价为¥{}，市盈率为{}。' \
+                     '\n\n股晟智能AI助手提醒，投资股票涉及风险，股价可能受到市场波动、公司经营风险等因素的影响。在做出投资决策之前，请确保您充分了解并能够承担相关的风险。'.format(
+                result, pe[0], company_name, pe[1], pe[2])
         response = {"query": query,
                     "result": result,
                     "source_documents": input_documents}
@@ -727,10 +735,12 @@ class LocalDocQA:
             knowledge_ratio：知识库占比（0-1）
         """
         question, keywords, company_name = self.question_generator_keywords(query, chat_history)
-        if company_name != "" and company_name in COMPANY_CODES.keys():
-            new_vs_path = vs_path + "_" + COMPANY_CODES[company_name]['code']
-            if has_vector_store(new_vs_path):
-                vs_path = new_vs_path
+        if company_name:
+            code = getCodeByName(company_name)
+            if code:
+                new_vs_path = vs_path + "_" + code
+                if has_vector_store(new_vs_path):
+                    vs_path = new_vs_path
         if not has_vector_store(vs_path):
             response = {"query": query,
                         "result": "知识库不存在, 请联系技术支持人员",
