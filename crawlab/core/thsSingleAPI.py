@@ -3,7 +3,7 @@ import datetime
 import json
 import sys
 
-from config.common_config import stockMap
+from config.common_config import COMPANY_CODES
 from storage import EsStore,MilvusStore
 import requests
 from bs4 import BeautifulSoup
@@ -145,8 +145,8 @@ if __name__ == '__main__':
         else:
             buildMarketdata(stock, 32)
     else:
-        for stock in stockMap:
-            if stock.startswith("6"):
-                buildMarketdata(stock, 16)
+        for companycode in COMPANY_CODES:
+            if companycode.get("code").startswith("6"):
+                buildMarketdata(companycode.get("code"), 16)
             else:
-                buildMarketdata(stock, 32)
+                buildMarketdata(companycode.get("code"), 32)

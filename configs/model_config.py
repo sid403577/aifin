@@ -1,12 +1,17 @@
-import torch.cuda
 import torch.backends
 import os
 import logging
 import uuid
 
 from openai import util
-util.logger.setLevel(logging.INFO)
+import logging
+import os
+import uuid
 
+import torch.backends
+from openai import util
+
+util.logger.setLevel(logging.INFO)
 
 LOG_FORMAT = "%(levelname) -5s %(asctime)s" "-1d: %(message)s"
 logger = logging.getLogger()
@@ -435,34 +440,34 @@ COMPANYS = ['比亚迪', '伊利股份', '宁德时代', '科士达',
 # SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=300887 ORDER BY TRADEDATE DESC;
 COMPANY_CODES = [
     {
-        "code":"002594",
-        "name":"比亚迪",
+        "code": "002594",
+        "name": "比亚迪",
     }, {
-        "code":"600887",
-        "name":"伊利股份",
+        "code": "600887",
+        "name": "伊利股份",
     }, {
-        "code":"300750",
-        "name":"宁德时代",
+        "code": "300750",
+        "name": "宁德时代",
     }, {
-        "code":"002518",
-        "name":"科士达",
+        "code": "002518",
+        "name": "科士达",
     }, {
-        "code":"600225",
-        "name":"卓朗科技",
+        "code": "600225",
+        "name": "卓朗科技",
     }, {
-        "code":"600977",
-        "name":"中国电影",
+        "code": "600977",
+        "name": "中国电影",
     }, {
-        "code":"603259",
-        "name":"药明康德",
+        "code": "603259",
+        "name": "药明康德",
     }, {
-        "code":"000063",
-        "name":"中兴通讯",
+        "code": "000063",
+        "name": "中兴通讯",
     }, {
-        "code":"600737",
-        "name":"中粮糖业",
+        "code": "600737",
+        "name": "中粮糖业",
     }, {
-        "code":"300887",
-        "name":"谱尼测试",
+        "code": "300887",
+        "name": "谱尼测试",
     }
 ]

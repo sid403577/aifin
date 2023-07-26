@@ -5,7 +5,7 @@ import sys
 
 import pyodbc
 
-from config.common_config import stockMap
+from config.common_config import COMPANY_CODES
 from storage import MilvusStore, EsStore
 from utils.urlToData import download_page
 
@@ -103,5 +103,5 @@ if __name__ == '__main__':
     #     stock = sys.argv[1]  # 股票Code
     #     transEs(stock, 1)
     # else:
-    for stock in stockMap:
-        transEs(stock, 1)
+    for companyCode in COMPANY_CODES:
+        transEs(companyCode['code'], 1)
