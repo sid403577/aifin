@@ -3,7 +3,6 @@ import json
 import os
 import shutil
 import traceback
-from datetime import datetime
 from typing import List, Optional
 import urllib
 import asyncio
@@ -428,65 +427,25 @@ def chat(
 
 
 def docs2source(docs):
+    ret = []
+    inum = 1
     url_set = set()
-    # scores = set()
-    # score_docs = {}
-    dates = set()
-    date_docs = {}
     for doc in docs:
         if doc.metadata.get("uniqueId") in url_set:
             continue
         url_set.add(doc.metadata.get("uniqueId"))
-        # score = doc.metadata.get("score")
-        # if score in scores:
-        #     score_docs[score].append(doc)
-        # else:
-        #     scores.add(score)
-        #     score_docs[score] = [doc]
-        date = doc.metadata['date']
-        if date in dates:
-            date_docs[date].append(doc)
-        else:
-            dates.add(datetime.strptime(date, '%Y-%m-%d %H:%M:%S'))
-            date_docs[date] = [doc]
-
-    ret = []
-    inum = 1
-    sorted_dates = sorted(dates, reverse=True)
-    for date in sorted_dates:
-        for doc in date_docs[date.strftime('%Y-%m-%d %H:%M:%S')]:
-            ret.append(json.dumps(
-                                {
-                                    "num": inum ,
-                                    "title": doc.metadata.get("title"),
-                                    "url": doc.metadata.get("url"),
-                                    "rootUrl": get_root_domain(doc.metadata.get("url")),
-                                    "content": doc.metadata["abstract"] if (len(doc.metadata.get("abstract")) > 0) else doc.page_content,
-                                    "date": doc.metadata.get("date"),
-                                    "score": doc.metadata.get("score"),
-                                    "source": doc.metadata.get("source"),
-                                }
-                            ))
-            inum = inum + 1
-
-    # inum = 1
-    # ret = []
-    # sorted_scores = sorted(scores)
-    # for score in sorted_scores:
-    #     for doc in score_docs[score]:
-    #         ret.append(json.dumps(
-    #                             {
-    #                                 "num": inum ,
-    #                                 "title": doc.metadata.get("title"),
-    #                                 "url": doc.metadata.get("url"),
-    #                                 "rootUrl": get_root_domain(doc.metadata.get("url")),
-    #                                 "content": doc.metadata["abstract"] if (len(doc.metadata.get("abstract")) > 0) else doc.page_content,
-    #                                 "date": doc.metadata.get("date"),
-    #                                 "score": doc.metadata.get("score"),
-    #                                 "source": doc.metadata.get("source"),
-    #                             }
-    #                         ))
-    #         inum = inum + 1
+        ret.append(json.dumps(
+            {
+                "num": inum,
+                "title": doc.metadata.get("title"),
+                "url": doc.metadata.get("url"),
+                "rootUrl": get_root_domain(doc.metadata.get("url")),
+                "content": doc.metadata["abstract"] if (len(doc.metadata.get("abstract")) > 0) else doc.page_content,
+                "date": doc.metadata.get("date"),
+                "score": doc.metadata.get("score"),
+                "source": doc.metadata.get("source"),
+            }
+        ))
     return ret
 
 

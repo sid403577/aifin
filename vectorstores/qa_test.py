@@ -1,173 +1,24 @@
-import torch.cuda
-import torch.backends
 import os
-import logging
-import uuid
+import sys
+import time
+from langchain import OpenAI, PromptTemplate, FewShotPromptTemplate, FAISS
+from langchain.chains import RetrievalQA
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.prompts.example_selector import SemanticSimilarityExampleSelector
+from langchain.vectorstores import Chroma, Milvus
 
-from openai import util
-util.logger.setLevel(logging.INFO)
+from configs.model_config import MILVUS_PORT
 
+sys.path.append('.')
+from models import shared
+from models.loader import LoaderCheckPoint
+from models.loader.args import parser
+from vectorstores import MyFAISS
 
-LOG_FORMAT = "%(levelname) -5s %(asctime)s" "-1d: %(message)s"
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logging.basicConfig(format=LOG_FORMAT)
-
-# 在以下字典中修改属性值，以指定本地embedding模型存储位置
-# 如将 "text2vec": "GanymedeNil/text2vec-large-chinese" 修改为 "text2vec": "User/Downloads/text2vec-large-chinese"
-# 此处请写绝对路径
-embedding_model_dict = {
-    "ernie-tiny": "nghuyong/ernie-3.0-nano-zh",
-    "ernie-base": "nghuyong/ernie-3.0-base-zh",
-    "text2vec-base": "shibing624/text2vec-base-chinese",
-    "text2vec": "huggingface/GanymedeNil/text2vec-large-chinese",
-    "m3e-small": "moka-ai/m3e-small",
-    "m3e-base": "moka-ai/m3e-base",
-}
-
-# Embedding model name
-EMBEDDING_MODEL = "text2vec"
-
-# Embedding running device
-EMBEDDING_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-
-# supported LLM models
-# llm_model_dict 处理了loader的一些预设行为，如加载位置，模型名称，模型处理器实例
-# 在以下字典中修改属性值，以指定本地 LLM 模型存储位置
-# 如将 "chatglm-6b" 的 "local_model_path" 由 None 修改为 "User/Downloads/chatglm-6b"
-# 此处请写绝对路径
-llm_model_dict = {
-    "chatglm-6b-int4-qe": {
-        "name": "chatglm-6b-int4-qe",
-        "pretrained_model_name": "THUDM/chatglm-6b-int4-qe",
-        "local_model_path": None,
-        "provides": "ChatGLM"
-    },
-    "chatglm-6b-int4": {
-        "name": "chatglm-6b-int4",
-        "pretrained_model_name": "THUDM/chatglm-6b-int4",
-        "local_model_path": None,
-        "provides": "ChatGLM"
-    },
-    "chatglm-6b-int8": {
-        "name": "chatglm-6b-int8",
-        "pretrained_model_name": "THUDM/chatglm-6b-int8",
-        "local_model_path": None,
-        "provides": "ChatGLM"
-    },
-    "chatglm-6b": {
-        "name": "chatglm-6b",
-        "pretrained_model_name": "THUDM/chatglm-6b",
-        "local_model_path": "huggingface/THUDM/chatglm2-6b",
-        "provides": "ChatGLM"
-    },
-    "chatglm2-6b": {
-        "name": "chatglm2-6b",
-        "pretrained_model_name": "THUDM/chatglm2-6b",
-        "local_model_path": "huggingface/THUDM/chatglm2-6b",
-        "provides": "ChatGLM"
-    },
-
-    "chatyuan": {
-        "name": "chatyuan",
-        "pretrained_model_name": "ClueAI/ChatYuan-large-v2",
-        "local_model_path": None,
-        "provides": None
-    },
-    "moss": {
-        "name": "moss",
-        "pretrained_model_name": "fnlp/moss-moon-003-sft",
-        "local_model_path": None,
-        "provides": "MOSSLLM"
-    },
-    "vicuna-13b-hf": {
-        "name": "vicuna-13b-hf",
-        "pretrained_model_name": "vicuna-13b-hf",
-        "local_model_path": None,
-        "provides": "LLamaLLM"
-    },
-    "ChatGPT-3.5": {
-        "name": "gpt-3.5-turbo",  # "name"修改为fastchat服务中的"model_name"
-        "pretrained_model_name": "gpt-3.5-turbo",
-        "local_model_path": None,
-        "provides": "FastChatOpenAILLM",  # 使用fastchat api时，需保证"provides"为"FastChatOpenAILLM"
-        "api_key": None,
-        "api_base_url": ""  # "name"修改为fastchat服务中的"api_base_url"
-    },
-    # 通过 fastchat 调用的模型请参考如下格式
-    "fastchat-chatglm-6b": {
-        "name": "chatglm-6b",  # "name"修改为fastchat服务中的"model_name"
-        "pretrained_model_name": "chatglm-6b",
-        "local_model_path": None,
-        "provides": "FastChatOpenAILLM",  # 使用fastchat api时，需保证"provides"为"FastChatOpenAILLM"
-        "api_base_url": "http://localhost:8000/v1"  # "name"修改为fastchat服务中的"api_base_url"
-    },
-    "fastchat-chatglm2-6b": {
-        "name": "chatglm2-6b",  # "name"修改为fastchat服务中的"model_name"
-        "pretrained_model_name": "chatglm2-6b",
-        "local_model_path": None,
-        "provides": "FastChatOpenAILLM",  # 使用fastchat api时，需保证"provides"为"FastChatOpenAILLM"
-        "api_base_url": "http://43.163.242.102:8000/v1"  # "name"修改为fastchat服务中的"api_base_url"
-    },
-
-    # 通过 fastchat 调用的模型请参考如下格式
-    "fastchat-vicuna-13b-hf": {
-        "name": "vicuna-13b-hf",  # "name"修改为fastchat服务中的"model_name"
-        "pretrained_model_name": "vicuna-13b-hf",
-        "local_model_path": None,
-        "provides": "FastChatOpenAILLM",  # 使用fastchat api时，需保证"provides"为"FastChatOpenAILLM"
-        "api_base_url": "http://localhost:8000/v1"  # "name"修改为fastchat服务中的"api_base_url"
-    },
-}
-
-# LLM 名称
-LLM_MODEL = "fastchat-chatglm2-6b"
-# 量化加载8bit 模型
-LOAD_IN_8BIT = False
-# Load the model with bfloat16 precision. Requires NVIDIA Ampere GPU.
-BF16 = False
-# 本地lora存放的位置
-LORA_DIR = "loras/"
-
-# LLM lora path，默认为空，如果有请直接指定文件夹路径
-LLM_LORA_PATH = ""
-USE_LORA = True if LLM_LORA_PATH else False
-
-# LLM streaming reponse
-STREAMING = True
-
-# Use p-tuning-v2 PrefixEncoder
-USE_PTUNING_V2 = False
-
-# LLM running device
-LLM_DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-
-# 知识库默认存储路径
-KB_ROOT_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "knowledge_base")
-
-CONDENSE_QUESTION_PROMPT = """根据以下聊天记录和后续问题，请使用中文将后续问题改写为一个独立的问题。
-
-聊天记录：
-{chat_history}
-后续问题：{question}
-独立问题："""
-
-CONDENSE_QUESTION_PROMPT_KEYWORDS = """根据以下聊天记录和后续问题，首先使用中文将后续问题改写为一个独立的问题, 然后提取该问题的搜索查询关键词。
-格式如下：
-问题：
-关键词：
-
-聊天记录：
-{chat_history}
-后续问题：{question}
-"""
-
-# 基于上下文的prompt模版，请务必保留"{question}"和"{context}"
-PROMPT_TEMPLATE = """已知信息：
-{context} 
-
-根据上述已知信息，简洁和专业的来回答用户的问题，请不要考虑投资风险。使用[Document 序号]符号引用每个参考文献（每个已知信息的开头都有这个序号）。引文应在每句话末尾进行。如果无法从中得到答案，请说 “根据已知信息无法回答该问题” 或 “没有提供足够的相关信息”，不允许在答案中添加编造成分，答案请使用中文。 
-问题是：{question}"""
+os.environ[
+    "OPENAI_API_KEY"] = "sk-kcfJcDXKztSEuMxaSqVjvuniMFIlz8HSr2xApuxivkNINiEc"  # 当前key为内测key，内测结束后会失效，在群里会针对性的发放新key
+os.environ["OPENAI_API_BASE"] = "https://key.langchain.com.cn/v1"
+os.environ["OPENAI_API_PREFIX"] = "https://key.langchain.com.cn"
 
 PROMPT_TEMPLATE_EXAMPLE = """
     User: {query}
@@ -356,131 +207,83 @@ PROMPT_TEMPLATE_EXAMPLES = [
         4、结论：科士达股票当前市场热点排名全市场前1/3的水平。"
     }
 ]
+KB_ROOT_PATH = "/Users/chaogaofeng/workspace/src/github.com/hwchase17/aifin/knowledge_base"
+if __name__ == "__main__":
+    # 初始化消息
+    args = None
+    args = parser.parse_args()
+    args_dict = vars(args)
+    shared.loaderCheckPoint = LoaderCheckPoint(args_dict)
+    llm_model_ins = shared.loaderLLM()
 
-# 缓存知识库数量
-CACHED_VS_NUM = 1
+    llm = OpenAI(temperature=0)
+    embeddings = HuggingFaceEmbeddings(
+        model_name='/Users/chaogaofeng/workspace/src/github.com/hwchase17/aifin/huggingface/GanymedeNil/text2vec-large-chinese',
+        model_kwargs={'device': 'cpu'})
 
-# 文本分句长度
-SENTENCE_SIZE = 100
+    example_selector = SemanticSimilarityExampleSelector.from_examples(
+        # This is the list of examples available to select from.
+        PROMPT_TEMPLATE_EXAMPLES,
+        # This is the embedding class used to produce embeddings which are used to measure semantic similarity.
+        embeddings,
+        # This is the VectorStore class that is used to store the embeddings and do a similarity search over.
+        Chroma,
+        # This is the number of examples to produce.
+        k=1
+    )
+    example_prompt = PromptTemplate(
+        input_variables=["query", "answer"],
+        template=PROMPT_TEMPLATE_EXAMPLE
+    )
+    few_shot_prompt_template = FewShotPromptTemplate(
+        example_selector=example_selector,
+        # examples = examples,
+        example_prompt=example_prompt,
+        prefix=PROMPT_TEMPLATE_EXAMPLE_PREFIX,
+        suffix=PROMPT_TEMPLATE_EXAMPLE_SUFFIX,
+        input_variables=["question", "context"],
+        example_separator="\n\n"
+    )
 
-# 匹配后单段上下文长度
-CHUNK_SIZE = 250
+    code = "002594"
+    query = "表现"
+    # s = time.perf_counter()
+    # print(f"知识库加载 ...")
+    # vs_path = os.path.join(KB_ROOT_PATH, "aifin_" + code, "vector_store")
+    # vs = FAISS.load_local(vs_path, embeddings)
+    # vs.chunk_size = 250
+    # vs.chunk_conent = True
+    # vs.score_threshold = 1000
+    # elapsed = time.perf_counter() - s
+    # print(f"知识库加载 结束{elapsed:0.2f} seconds")
+    # related_docs = vs.similarity_search_with_score(query, k=1)
+    # print(f"知识库搜索 结束{elapsed:0.2f} seconds len:{len(related_docs)}")
+    # context = "\n".join([doc[0].page_content for doc in related_docs])
+    # print("source={}", context)
+    # print("score={}", [doc[1] for doc in related_docs])
+    # retriever = vs.as_retriever(search_type="similarity_score_threshold",
+    #                             search_kwargs={"k": 5, "score_threshold": 0.1})
+    # qa = RetrievalQA.from_chain_type(
+    #     llm=llm_model_ins, chain_type="stuff", retriever=retriever, return_source_documents=True)
+    # result = qa({"query": query})
+    # print("faiss ========", result['query'])
+    # print("faiss ========", result['result'])
+    # print("faiss ========", [doc.page_content for doc in result['source_documents']])
 
-# 传入LLM的历史记录长度
-LLM_HISTORY_LEN = 3
-
-# 知识库检索时返回的匹配内容条数
-VECTOR_SEARCH_TOP_K = 3
-
-# 知识检索内容相关度 Score, 数值范围约为0-1100，如果为0，则不生效，经测试设置为小于500时，匹配结果更精准
-VECTOR_SEARCH_SCORE_THRESHOLD = 800
-
-NLTK_DATA_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "nltk_data")
-
-FLAG_USER_NAME = uuid.uuid4().hex
-
-logger.info(f"""
-loading model config
-llm device: {LLM_DEVICE}
-embedding device: {EMBEDDING_DEVICE}
-dir: {os.path.dirname(os.path.dirname(__file__))}
-flagging username: {FLAG_USER_NAME}
-""")
-
-# 是否开启跨域，默认为False，如果需要开启，请设置为True
-# is open cross domain
-OPEN_CROSS_DOMAIN = False
-
-# Bing 搜索必备变量
-# 使用 Bing 搜索需要使用 Bing Subscription Key,需要在azure port中申请试用bing search
-# 具体申请方式请见
-# https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/create-bing-search-service-resource
-# 使用python创建bing api 搜索实例详见:
-# https://learn.microsoft.com/en-us/bing/search-apis/bing-web-search/quickstarts/rest/python
-BING_SEARCH_URL = "https://api.bing.microsoft.com/v7.0/search"
-# 注意不是bing Webmaster Tools的api key，
-
-# 此外，如果是在服务器上，报Failed to establish a new connection: [Errno 110] Connection timed out
-# 是因为服务器加了防火墙，需要联系管理员加白名单，如果公司的服务器的话，就别想了GG
-BING_SUBSCRIPTION_KEY = "b5904d50bfd345ec8b8f6e9fe4bb75e6"
-
-GOOGLE_API_KEY = "AIzaSyACpSZ6gtDOKFadgM651TNu7DdzvtStX6Y"
-
-GOOGLE_CSE_ID = "d4451a0622ff94fc7"
-
-# 是否开启中文标题加强，以及标题增强的相关配置
-# 通过增加标题判断，判断哪些文本为标题，并在metadata中进行标记；
-# 然后将文本与往上一级的标题进行拼合，实现文本信息的增强。
-ZH_TITLE_ENHANCE = False
-
-MILVUS_HOST = "8.217.52.63"
-
-MILVUS_PORT = "19530"
-
-COMPANYS = ['比亚迪', '伊利股份', '宁德时代', '科士达',
-            '卓朗科技', '中国电影', '药明康德', '谱尼测试',
-            '广电计量', '海格通信', '中兴通讯', '中粮糖业',
-            '华通线缆', '圣邦股份', '思瑞浦', '中信证券',
-            '昆仑万维', '雄韬股份', '燕麦科技', '中国银行']
-
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=002594 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=600887 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=300750 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=002518 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=600225 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=600977 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=603259 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=000063 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=600737 ORDER BY TRADEDATE DESC;
-# SELECT TOP 1 PE9, TRADEDATE, SECINNERCODE FROM TRAD_SK_REVALUATION WHERE SECURITYCODE=300887 ORDER BY TRADEDATE DESC;
-COMPANY_CODES = {
-    "比亚迪": {
-        "code": "002594",
-        "price": 264.59,
-        "pe": 38.62,
-    },
-    "伊利股份":{
-        "code": "600887",
-        "price": 27.76,
-        "pe": 18.55,
-    },
-    "宁德时代": {
-        "code": "300750",
-        "price": 226.35,
-        "pe": 25.48,
-    },
-    "科士达": {
-        "code": "002518",
-        "price": 34.06,
-        "pe": 23.92,
-    },
-    "卓朗科技": {
-        "code": "600225",
-        "price": 5.95,
-        "pe": 42.57,
-    },
-    "中国电影": {
-        "code": "600977",
-        "price": 15.10,
-    },
-    "药明康德": {
-        "code": "603259",
-        "price": 68.15,
-        "pe": 21.66,
-    },
-    "中兴通讯": {
-        "code": "000063",
-        "price": 40.86,
-        "pe": 22.94,
-    },
-    "中粮糖业": {
-        "code": "600737",
-        "price": 8.17,
-        "pe": 22.17,
-    },
-    "谱尼测试": {
-        "code": "300887",
-        "price": 20.56,
-        "pe": 34.59,
-    },
-}
+    s = time.perf_counter()
+    print(f"知识库加载 ...")
+    vs = Milvus(collection_name="aifin_" + code, connection_args={"host": '8.217.52.63', "port": 19530}, embedding_function=embeddings)
+    elapsed = time.perf_counter() - s
+    print(f"知识库加载 结束{elapsed:0.2f} seconds")
+    related_docs = vs.similarity_search_with_score(query, k=5, expr='date < "2023-01-02"')
+    print(f"知识库搜索 结束{elapsed:0.2f} seconds len:{len(related_docs)}")
+    context = "\n==".join([doc[0].page_content for doc in related_docs])
+    print("source={}", context)
+    print("score={}", [doc[1] for doc in related_docs])
+    retriever = vs.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+    qa = RetrievalQA.from_chain_type(
+        llm=llm_model_ins, chain_type="stuff", retriever=retriever, return_source_documents=True)
+    result = qa({"query": query})
+    print("milvus ========", result['query'])
+    print("milvus ========", result['result'])
+    print("milvus ========", [doc.page_content for doc in result['source_documents']])
