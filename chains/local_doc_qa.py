@@ -247,15 +247,20 @@ def deduplication_documents(input_documents):
     #                                                    in input_documents])))
     docs = []
     md5_set = set()
-    date_docs = {}
-    dates = set()
     for doc in input_documents:
         md5 = calculate_md5(doc.page_content)
         if md5 in md5_set:
             continue
-        # docs.append(doc)
+        docs.append(doc)
         md5_set.add(md5)
+    return docs
 
+
+def sorted_documents(input_documents):
+    docs = []
+    date_docs = {}
+    dates = set()
+    for doc in input_documents:
         date = doc.metadata['date']
         if date in dates:
             date_docs[date].append(doc)
@@ -267,9 +272,24 @@ def deduplication_documents(input_documents):
     for date in sorted_dates:
         for doc in date_docs[date.strftime('%Y-%m-%d %H:%M:%S')]:
             docs.append(doc)
-    # if len(sorted_dates) > 1:
-    #     r = docs[:(len(docs) // 2 + 1)]
-    #     return r
+    return docs
+
+
+def add_index_documents(input_documents):
+    docs = []
+    index = 0
+    uniqueIdIndex = {}
+    for doc in input_documents:
+        uniqueId = doc.metadata.get("uniqueId")
+        if uniqueId not in uniqueIdIndex.keys():
+            index += 1
+            uniqueIdIndex[uniqueId] = index
+            docs.append(Document(page_content=f'[Document {index}]' + ' ' + '"' + doc.page_content + '"',
+                        metadata=doc.metadata))
+        else:
+            i = uniqueIdIndex[uniqueId]
+            docs.append(Document(page_content=f'[Document {i}]' + ' ' + '"' + doc.page_content + '"',
+                        metadata=doc.metadata))
     return docs
 
 
@@ -512,7 +532,7 @@ class LocalDocQA:
             related_docs_with_score = vector_store.similarity_search_with_score(keyword, k=top_k)
             input_documents.extend(
                 self.convert_faiss_documents(keyword, deduplication_documents(related_docs_with_score)))
-
+        input_documents = sorted_documents(input_documents)
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
         if streaming:
             response = {"query": query,
@@ -540,7 +560,7 @@ class LocalDocQA:
             input_variables=["context", "question"],
         )
         qa = load_qa_chain(self.llm, chain_type="stuff", prompt=PROMPT, verbose=verbose)
-        result = qa.run(input_documents=input_documents,
+        result = qa.run(input_documents=add_index_documents(input_documents),
                         question='从{}等角度分析{}, 最后给出不少于200字投资建议。'.format("、".join(keywords), query))
 
         if company_name is None or price is None or pe is None:
@@ -603,6 +623,7 @@ class LocalDocQA:
                                                                    deduplication_documents(related_docs_with_score))
             input_list[keyword] = related_docs_with_score
             input_documents.extend(related_docs_with_score)
+        input_documents = sorted_documents(input_documents)
         print(f"知识库搜索 【{len(input_documents)}】, elapsed {time.perf_counter() - s:0.2f} seconds")
         if streaming:
             response = {"query": query,
