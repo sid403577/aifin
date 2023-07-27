@@ -67,7 +67,7 @@ def getPE_Price(code: str):
         # 'Referer': 'http://quote.eastmoney.com/center/gridlist.html',
     }
     try:
-        response = requests.get(url=base_url, params=params, headers=EASTMONEY_REQUEST_HEADERS,timeout=1).json()
+        response = requests.get(url=base_url, params=params, headers=EASTMONEY_REQUEST_HEADERS,timeout=10).json()
         data = response['data']
         if data and 'diff' in data:
             diff = data['diff']
