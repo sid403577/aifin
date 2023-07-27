@@ -66,12 +66,15 @@ def getPE_Price(code: str):
         'Accept-Language': 'zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2',
         # 'Referer': 'http://quote.eastmoney.com/center/gridlist.html',
     }
-    response = requests.get(url=base_url, params=params, headers=EASTMONEY_REQUEST_HEADERS).json()
-    data = response['data']
-    if data and 'diff' in data:
-        diff = data['diff']
-        if len(diff) > 0:
-            return diff[0]['f297'], diff[0]['f2'], diff[0]['f9']
+    try:
+        response = requests.get(url=base_url, params=params, headers=EASTMONEY_REQUEST_HEADERS,timeout=1).json()
+        data = response['data']
+        if data and 'diff' in data:
+            diff = data['diff']
+            if len(diff) > 0:
+                return diff[0]['f297'], diff[0]['f2'], diff[0]['f9']
+    except Exception as e:
+        print(f"实时获取股票价格和市盈率异常，{e}")
 
 
 def getCodeByName(sname: str):
