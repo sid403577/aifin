@@ -282,7 +282,7 @@ def sorted_documents(input_documents):
 
 
 def add_index_documents(input_documents):
-    return
+    return input_documents
 
     docs = []
     index = 0
