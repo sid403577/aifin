@@ -237,7 +237,9 @@ def company(query, chat_history=[]):
 
 def company_pe(company):
     try:
+        print("company_pe...", company)
         code = getCodeByName(company)
+        print("company_pe...", company, code)
         if code:
             return getPE_Price(code)
     except Exception as e:
@@ -512,7 +514,7 @@ class LocalDocQA:
             return
 
         pe = company_pe(company_name)
-        print(company_name, pe)
+        print("company_pe", company_name, pe)
         # 1、query ==> keywords
         print(f"问题 {query}")
         s = time.perf_counter()
