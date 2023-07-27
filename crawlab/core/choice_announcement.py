@@ -16,9 +16,10 @@ def transEs(security_code:str,page_index:int=1):
     database = 'emdata'
     username = 'emdata'
     password = 'emdata'
-    driver = "/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.2.so.2.1"
+    linux_driver = f"DRIVER={{ODBC Driver 18 for SQL Server}}"
+    window_driver = f"DRIVER={{SQL Server}}"
 
-    connection_string = f"DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password}"
+    connection_string = f"{linux_driver};SERVER={server};DATABASE={database};UID={username};PWD={password}"
     conn = pyodbc.connect(connection_string)
     cursor = conn.cursor()
 
