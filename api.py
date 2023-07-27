@@ -457,6 +457,9 @@ async def chat_llm(websocket: WebSocket):
     turn = 1
     while True:
         input_json = await websocket.receive_text()
+        if "heartbeat" == input_json:
+            await websocket.send_text("heartbeat-reponse")
+            continue
         json_data = json.loads(input_json)
         question, history, tp = json_data["question"], json_data["history"], json_data["type"]
         await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
