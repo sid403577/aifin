@@ -282,6 +282,8 @@ def sorted_documents(input_documents):
 
 
 def add_index_documents(input_documents):
+    return
+
     docs = []
     index = 0
     uniqueIdIndex = {}
