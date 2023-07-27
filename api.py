@@ -26,7 +26,7 @@ from models.loader import LoaderCheckPoint
 
 nltk.data.path = [NLTK_DATA_PATH] + nltk.data.path
 
-
+os.environ["OPENAI_API_KEY"] = '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'
 class BaseResponse(BaseModel):
     code: int = pydantic.Field(200, description="HTTP status code")
     msg: str = pydantic.Field("success", description="HTTP status message")
@@ -458,107 +458,110 @@ async def chat_llm(websocket: WebSocket):
     while True:
         input_json = await websocket.receive_text()
         json_data = json.loads(input_json)
-        question, history, tp = json_data["question"], json_data["history"], json_data["type"]
-        await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
-
-        try:
-            source_documents = None
-            if tp == 2:
-                for result, history in local_doc_qa.get_knowledge_based_answer_map_reduce(
-                        query=question, vs_path="aifin", chat_history=history, streaming=True):
-                    if source_documents is None:
-                        await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                        source_documents = docs2source(result["source_documents"])
-                    chat_message = ChatMessage(
-                        question=question,
-                        response=result["result"],
-                        history=history,
-                        source_documents=source_documents,
-                    )
-                    await websocket.send_text(
-                        json.dumps(
-                            chat_message,
-                            cls=ChatMessageEncoder,
-                            ensure_ascii=False,
-                        )
-                    )
-
-            elif tp == 3:
-                for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
-                        query=question, vs_path="aifin", chat_history=history, streaming=True,
-                        knowledge_ratio=0.5):
-                    if source_documents is None:
-                        await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                        source_documents = docs2source(result["source_documents"])
-                    chat_message = ChatMessage(
-                        question=question,
-                        response=result["result"],
-                        history=history,
-                        source_documents=source_documents,
-                    )
-                    await websocket.send_text(
-                        json.dumps(
-                            chat_message,
-                            cls=ChatMessageEncoder,
-                            ensure_ascii=False,
-                        )
-                    )
-
-            elif tp == 4:
-                for result, history in local_doc_qa.get_knowledge_based_answer_stuff(
-                        query=question, vs_path="aifin", chat_history=history, streaming=True):
-                    if source_documents is None:
-                        await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
-                        source_documents = docs2source(result["source_documents"])
-                    chat_message = ChatMessage(
-                        question=question,
-                        response=result["result"],
-                        history=history,
-                        source_documents=source_documents,
-                    )
-                    await websocket.send_text(
-                        json.dumps(
-                            chat_message,
-                            cls=ChatMessageEncoder,
-                            ensure_ascii=False,
-                        )
-                    )
-
-            else:
-                for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
-                    resp = answer_result.llm_output["answer"]
-                    history = answer_result.history
-                    chat_message = ChatMessage(
-                        question=question,
-                        response=resp,
-                        history=history,
-                        source_documents=[],
-                    )
-                    await websocket.send_text(
-                        json.dumps(
-                            chat_message,
-                            cls=ChatMessageEncoder,
-                            ensure_ascii=False,
-                        )
-                    )
-        except Exception as e:
-            traceback_str = traceback.format_exc()
-            print(question, e, traceback_str)
-            await websocket.send_text(
-                json.dumps(
-                    ChatMessage(
-                        question=question,
-                        response="程序异常, 请联系技术支持人员",
-                        history=history,
-                        source_documents=[],
-                    ),
-                    cls=ChatMessageEncoder,
-                    ensure_ascii=False,
+        if "ping" in json_data.keys():
+            await websocket.send_json({"pong": json_data["ping"]})
+        else:
+            question, history, tp = json_data["question"], json_data["history"], json_data["type"]
+            await chat(websocket, question, history, tp, turn)
+            turn += 1
+async def chat(websocket: WebSocket, question, history, tp, turn):
+    await websocket.send_json({"question": question, "turn": turn, "flag": "start"})
+    try:
+        source_documents = None
+        if tp == 2:
+            for result, history in local_doc_qa.get_knowledge_based_answer_map_reduce(
+                    query=question, vs_path="aifin", chat_history=history, streaming=True):
+                if source_documents is None:
+                    await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
+                    source_documents = docs2source(result["source_documents"])
+                chat_message = ChatMessage(
+                    question=question,
+                    response=result["result"],
+                    history=history,
+                    source_documents=source_documents,
                 )
-            )
-        await websocket.send_json({"question": question, "turn": turn, "flag": "end"})
-        turn += 1
+                await websocket.send_text(
+                    json.dumps(
+                        chat_message,
+                        cls=ChatMessageEncoder,
+                        ensure_ascii=False,
+                    )
+                )
 
+        elif tp == 3:
+             for result, history in local_doc_qa.get_knowledge_union_google_search_based_answer(
+                    query=question, vs_path="aifin", chat_history=history, streaming=True,
+                    knowledge_ratio=0.5):
+                if source_documents is None:
+                    await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
+                    source_documents = docs2source(result["source_documents"])
+                chat_message = ChatMessage(
+                    question=question,
+                    response=result["result"],
+                    history=history,
+                    source_documents=source_documents,
+                )
+                await websocket.send_text(
+                    json.dumps(
+                        chat_message,
+                        cls=ChatMessageEncoder,
+                        ensure_ascii=False,
+                    )
+                )
+
+        elif tp == 4:
+            for result, history in local_doc_qa.get_knowledge_based_answer_stuff(
+                    query=question, vs_path="aifin", chat_history=history, streaming=True):
+                if source_documents is None:
+                    await websocket.send_json({"question": question, "turn": turn, "flag": "thinking"})
+                    source_documents = docs2source(result["source_documents"])
+                chat_message = ChatMessage(
+                    question=question,
+                    response=result["result"],
+                    history=history,
+                    source_documents=source_documents,
+                )
+                await websocket.send_text(
+                    json.dumps(
+                        chat_message,
+                        cls=ChatMessageEncoder,
+                        ensure_ascii=False,
+                    )
+                )
+
+        else:
+            for answer_result in local_doc_qa.llm.generatorAnswer(question, history, streaming=True):
+                resp = answer_result.llm_output["answer"]
+                history = answer_result.history
+                chat_message = ChatMessage(
+                    question=question,
+                    response=resp,
+                    history=history,
+                    source_documents=[],
+                )
+                await websocket.send_text(
+                    json.dumps(
+                        chat_message,
+                        cls=ChatMessageEncoder,
+                        ensure_ascii=False,
+                    )
+                )
+    except Exception as e:
+        traceback_str = traceback.format_exc()
+        print(question, e, traceback_str)
+        await websocket.send_text(
+            json.dumps(
+                ChatMessage(
+                    question=question,
+                    response="程序异常, 请联系技术支持人员",
+                    history=history,
+                    source_documents=[],
+                ),
+                cls=ChatMessageEncoder,
+                ensure_ascii=False,
+            )
+        )
+    await websocket.send_json({"question": question, "turn": turn, "flag": "end"})
 
 async def stream_chat(websocket: WebSocket, knowledge_base_id: str):
     await websocket.accept()
