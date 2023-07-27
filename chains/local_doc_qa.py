@@ -513,11 +513,11 @@ class LocalDocQA:
             yield response, chat_history
             return
 
-        pe = company_pe(company_name)
-        print("company_pe", company_name, pe)
         # 1、query ==> keywords
         print(f"问题 {query}")
         s = time.perf_counter()
+        pe = company_pe(company_name)
+        print(f"company_pe {company_name}, elapsed {time.perf_counter() - s:0.2f} seconds")
         PROMPT_KEYWORDS = PromptTemplate(
             template="""分析{question}, 给出三个分析角度的关键字，以JSON数组的方式输出""",
             input_variables=["question"],
