@@ -446,6 +446,7 @@ def docs2source(docs):
                 "source": doc.metadata.get("source"),
             }
         ))
+        inum += 1
     return ret
 
 

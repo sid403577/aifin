@@ -512,6 +512,7 @@ class LocalDocQA:
             return
 
         pe = company_pe(company_name)
+        print(company_name, pe)
         # 1、query ==> keywords
         print(f"问题 {query}")
         s = time.perf_counter()
