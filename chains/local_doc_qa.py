@@ -236,9 +236,13 @@ def company(query, chat_history=[]):
 
 
 def company_pe(company):
-    code = getCodeByName(company)
-    if code:
-        return getPE_Price(code)
+    try:
+        code = getCodeByName(company)
+        if code:
+            return getPE_Price(code)
+    except Exception as e:
+        print("company_pe error", e)
+
 
 
 def deduplication_documents(input_documents):
