@@ -26,7 +26,6 @@ from models.loader import LoaderCheckPoint
 
 nltk.data.path = [NLTK_DATA_PATH] + nltk.data.path
 
-os.environ["OPENAI_API_KEY"] = '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'
 class BaseResponse(BaseModel):
     code: int = pydantic.Field(200, description="HTTP status code")
     msg: str = pydantic.Field("success", description="HTTP status message")
