@@ -282,8 +282,6 @@ def sorted_documents(input_documents):
 
 
 def add_index_documents(input_documents):
-    return input_documents
-
     docs = []
     index = 0
     uniqueIdIndex = {}
@@ -292,11 +290,11 @@ def add_index_documents(input_documents):
         if uniqueId not in uniqueIdIndex.keys():
             index += 1
             uniqueIdIndex[uniqueId] = index
-            docs.append(Document(page_content=f'[Document {index}]' + ' ' + '"' + doc.page_content + '"',
+            docs.append(Document(page_content=f'[{index}]' + ' ' + '"' + doc.page_content + '"',
                         metadata=doc.metadata))
         else:
             i = uniqueIdIndex[uniqueId]
-            docs.append(Document(page_content=f'[Document {i}]' + ' ' + '"' + doc.page_content + '"',
+            docs.append(Document(page_content=f'[{i}]' + ' ' + '"' + doc.page_content + '"',
                         metadata=doc.metadata))
     return docs
 
