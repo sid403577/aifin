@@ -37,3 +37,12 @@ def download_page(url:str, para=None):
     else:
         print("failed to download the page")
 
+
+if __name__ == '__main__':
+    pagesis = {
+        "element": "div",
+        # "attr": {"class": "article"},
+        "attr": {"class": "newsContent"},
+    }
+    text = get_text("https://data.eastmoney.com/report/info/AP202308251595831947.html",pagesis)
+    print(text)

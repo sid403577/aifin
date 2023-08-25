@@ -4,6 +4,7 @@ import datetime
 import json
 import re
 import sys
+import time
 import urllib.parse
 
 import requests
@@ -16,25 +17,23 @@ from storage import EsStore,MilvusStore
 
 
 htmlcontent = {
-    "search-api-web.eastmoney.com": {
-        "domainurl": "https://search-api-web.eastmoney.com/search/jsonp?cb=jQuery35107761762966427765_1687662386467",
+	"eastmoney-stock-carticle": {
+        "domainurl": "https://search-api-web.eastmoney.com/search/jsonp?cb=jQuery35107761762966427765_1687662386467&_=$st",
         "parse_param": {
             "key": "param",
-            "value": '{"uid": "4529014368817886", "keyword": "$code", "type": ["cmsArticleWebOld"], "client": "core", "clientType": "core", "clientVersion": "curr", "param": {"cmsArticleWebOld": {"searchScope": "default", "sort": "time", "pageIndex": $pageIndex, "pageSize": $pageSize, "preTag": "<em>", "postTag": "</em>"}}}',
+            "value": '{"uid": "4529014368817886", "keyword": "$code", "type": ["article"], "client": "web", "clientType": "web", "clientVersion": "curr", "param": {"article": {"searchScope": "ALL", "sort": "DATE", "pageIndex": $pageIndex, "pageSize": $pageSize, "preTag": "", "postTag": ""}}}',
         },
         "result_re": 'jQuery35107761762966427765_1687662386467\((.*)\)',
-        "data": ['result', 'cmsArticleWebOld'],
+        "data": ['result', 'article'],
         "text_re": {
             "element": "div",
-            #"attr": {"class": "article"},
-            "attr": {"class": "txtinfos"},
+            "attr": {"class": "article-body"},
         }
-
     }
 }
 
-def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数分别表示开始读取与结束读取的页码
-
+def eastmoney(code: str,stockName:str, type: str, startPage=1):  # 两个参数分别表示开始读取与结束读取的页码
+    domain = "eastmoney-stock-carticle"
     param_content = htmlcontent[domain]
     if not param_content:
         print(f"该域名数据无法获取，domain:{domain}")
@@ -49,8 +48,9 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
     while flag and count < 5:
         print(f"开始获取第{pageIndex}页数据")
         domainurl: str = param_content['domainurl']
+        st=int(round(time.time() * 1000))
         domainurl = domainurl.replace("$code", code).replace("$pageIndex", str(pageIndex)).replace("$pageSize",
-                                                                                                   str(pageSize))
+                                                                                                   str(pageSize)).replace("$st",str(st))
         parse_param = param_content['parse_param']
         link = f"{domainurl}"
         if parse_param:
@@ -93,46 +93,28 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
 
                 total += 1
                 print(f"开始处理第{total}条数据：{data[i]}")
-                # 数据处理
-                url = data[i]['url']
-                abstract = data[i]['content']
-                crawUrl = f"{crowBaseUrl}&url={urllib.parse.quote(url)}"
-                text = get_text(crawUrl, param_content['text_re'])
-                title = data[i]['title']
-                uniqueId = data[i]['code']
-                createTime = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                if abstract:
-                    abstract = abstract.replace('</em>', '').replace('<em>', '').strip()
-                if text:
-                    text = text.replace('</em>', '').replace('<em>', '').strip()
-                else:
-                    text = abstract
-                if title:
-                    title = title.replace('</em>', '').replace('<em>', '').strip()
-
-
-                print(f"uniqueId:{uniqueId}")
-                print(f"code:{code}")
-                print(f"url:{url}")
-                print(f"date:{date}")
-                print(f"type:{type}")
-                print(f"text:{text}")
-                print(f"abstract:{abstract}")
-                print(f"title:{title}")
+                url = f"https://caifuhao.eastmoney.com/news/{data[i]['code']}"
+                text = get_text(url, param_content['text_re'])
+                text = text.replace("\n\n", "").replace("  ", "").replace('</em>', '').replace('<em>', '')
+                abstract = data[i]['content'].replace('</em>', '').replace('<em>', '').strip()
+                if text and len(text) > 0:
+                    abstract = text[0:100]
 
                 metadata = {"source": "Web",
-                            "uniqueId": uniqueId,
+                            "uniqueId": data[i]['code'],
                             "code": code,
-                            "url": url,
+                            "name": stockName,
+                            "url": data[i]['url'],
                             "date": date,
-                            "type": "东方财富-资讯",
-                            "createTime": createTime,
+                            "type": domain,
+                            "createTime": datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                             "abstract": abstract,
-                            "title": title,
-                            "text":text}
+                            "title": data[i]['title'].replace('</em>', '').replace('<em>', '').strip(),
+                            "mediaName": data[i]['nickname'],
+                            "text": text}
                 storageList.append(metadata)
 
-                print(f"第{total}条数据处理完成")
+                print(f"第{total}条数据处理完成,数据内容：{json.dumps(metadata,ensure_ascii=False)}")
                 print("\n")
 
             except Exception as e:
@@ -141,9 +123,9 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
 
         if len(storageList) > 0:
             # 存入矢量库
-            MilvusStore.storeData(storageList,f"aifin_{code}","8.217.52.63:19530")
+            MilvusStore.storeData(storageList,f"aifin_stock_{code}","8.217.52.63:19530")
             # 存入es库
-            EsStore.storeData(storageList, f"aifin", "8.217.110.233:9200")
+            EsStore.storeData(storageList, f"aifin_stock", "8.217.110.233:9200")
 
         print(f"第{pageIndex}页数据处理完成")
         print("\n")
@@ -163,10 +145,10 @@ def eastmoney(domain: str, code: str, type: str, startPage=1):  # 两个参数�
 
 
 if __name__ == "__main__":
-    domain = sys.argv[1]  # 域名
-    code = sys.argv[2]  # 股票代码
-    type = sys.argv[3]  # 增量1，全量2
-    startPage = sys.argv[4]  # 从第几页
-    print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
-    eastmoney(domain, code, type, int(startPage))
-    #eastmoney("search-api-core.eastmoney.com", "002594", "2", 1)
+    # domain = sys.argv[1]  # 域名
+    # code = sys.argv[2]  # 股票代码
+    # type = sys.argv[3]  # 增量1，全量2
+    # startPage = sys.argv[4]  # 从第几页
+    # print(f"参数列表，domain:{domain},code:{code},type:{type},startPage:{startPage}")
+    # eastmoney(domain, code, type, int(startPage))
+    eastmoney("300750","宁德时代", "2", 1)
