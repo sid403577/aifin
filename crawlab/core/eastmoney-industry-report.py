@@ -8,7 +8,7 @@ import requests
 
 from config.common_config import crowBaseUrl
 from utils.urlToData import get_text
-from storage import EsStore,MilvusStore
+from storage import MongoDbStore,MilvusStore
 
 
 def eastmoney(industryCode: str,industryName:str, type: str, startPage=1):  # 两个参数分别表示开始读取与结束读取的页码
@@ -87,9 +87,9 @@ def eastmoney(industryCode: str,industryName:str, type: str, startPage=1):  # �
         if len(storageList) > 0:
             pass
             # 存入矢量库
-            #MilvusStore.storeData(storageList,f"aifin_industry_{industryCode}","8.217.52.63:19530")
-            # 存入es库
-            #EsStore.storeData(storageList, f"aifin_industry", "8.217.110.233:9200")
+            MilvusStore.storeData(storageList,f"aifin_industry_{industryCode}","8.217.52.63:19530")
+            # 存入mongoDB库
+            MongoDbStore.storeData(storageList, f"aifin_industry")
 
         print(f"第{pageIndex}页数据处理完成")
         print("\n")

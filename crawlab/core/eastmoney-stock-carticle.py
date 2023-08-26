@@ -11,7 +11,7 @@ import requests
 
 from config.common_config import crowBaseUrl
 from utils.urlToData import get_text
-from storage import EsStore,MilvusStore
+from storage import MongoDbStore,MilvusStore
 
 
 
@@ -124,8 +124,8 @@ def eastmoney(code: str,stockName:str, type: str, startPage=1):  # 两个参数�
         if len(storageList) > 0:
             # 存入矢量库
             MilvusStore.storeData(storageList,f"aifin_stock_{code}","8.217.52.63:19530")
-            # 存入es库
-            EsStore.storeData(storageList, f"aifin_stock", "8.217.110.233:9200")
+            # 存入mongoDB库
+            MongoDbStore.storeData(storageList, f"aifin_stock")
 
         print(f"第{pageIndex}页数据处理完成")
         print("\n")
