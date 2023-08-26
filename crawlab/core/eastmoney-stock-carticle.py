@@ -123,9 +123,14 @@ def eastmoney(code: str,stockName:str, type: str, startPage=1):  # 两个参数�
 
         if len(storageList) > 0:
             # 存入矢量库
-            MilvusStore.storeData(storageList,f"aifin_stock_{code}","8.217.52.63:19530")
+            milvusFlag = True
+            try:
+                MilvusStore.storeData(storageList, f"aifin_stock_{code}", "8.217.52.63:19530")
+            except:
+                print(f"第{pageIndex}页的数据，大小为{len(data)} 存入矢量库异常")
+                milvusFlag = False
             # 存入mongoDB库
-            MongoDbStore.storeData(storageList, f"aifin_stock")
+            MongoDbStore.storeData(storageList, f"aifin_stock", milvusFlag)
 
         print(f"第{pageIndex}页数据处理完成")
         print("\n")
